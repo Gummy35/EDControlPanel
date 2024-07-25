@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Elite Dangerous Controller - WiFi Setup</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script>
+    document.addEventListener('DOMContentLoaded', (event) => {
+      const toggleButton = document.getElementById('toggle-button');
+      const container = document.getElementById('collapsible-container');
+
+      toggleButton.addEventListener('click', () => {
+        if (container.style.display === 'none' || container.style.display === '') {
+          container.style.display = 'block';
+          toggleButton.innerText = 'Hide WiFi Setup';
+        } else {
+          container.style.display = 'none';
+          toggleButton.innerText = 'Show WiFi Setup';
+        }
+      });
+
+      // Initially hide the container
+      container.style.display = 'none';
+      toggleButton.innerText = 'Show WiFi Setup';
+    });
+  </script>
+</head>
+<body>
+  <img src="/static/logo.png" alt="Elite Dangerous Logo" class="logo">
+  <button id="toggle-button" class="toggle-button"></button>
+  <div id="collapsible-container" class="container">
+    <h1>Elite Dangerous Controller - WiFi Setup</h1>
+    <form action="/savewifi" method="POST">
+      <label for="ssid">WiFi SSID:</label>
+      <input type="text" id="ssid" name="ssid" value="%WIFI_SSID%" required>
+      
+      <label for="password">WiFi Password:</label>
+      <input type="password" id="password" name="password" required>
+      
+      <input type="submit" value="Save">
+      <button type="button" class="button" onclick="clearCredentials()">Clear credentials</button>
+    </form>
+  </div>
+  <div class="links">
+    <a href="/update">Update Firmware</a>
+    <a href="/webserial">WebSerial</a>
+  </div>
+  <script>
+    function clearCredentials() {
+      fetch('/clearwifi', { method: 'POST' })
+        .then(response => response.text())
+        .then(data => alert(data))
+        .catch(error => console.error('Error:', error));
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+#pragma once
+#include <WiFi.h>
+#include <WiFiClient.h>
+#include <WebServer.h>
+#include <ESPmDNS.h>
+#include <Update.h>
+
+class OTAUpdate
+{
+
+public:
+    void begin(char *host = "esp32", char *ssid = "REPLACE_WITH_YOUR_SSID", char *password = "REPLACE_WITH_YOUR_PASSWORD");
+    void stop(void);
+    void handle(void);
+    bool _active = false;
+
+private:
+    char *_host;
+    char *_ssid;
+    char *_password;
+};
