@@ -114,7 +114,7 @@ void ActionMapperClass::LoadDefaultMap()
     _actionsMap[DEFENSE_SHIELD_CELL] = {ActionnerType::Button, 0xC6, 0x00, 1}; // F5
     _actionsMap[DEFENSE_HEAT_SINK] = {ActionnerType::Button, 'v', 0x00, 1}; // V
     _actionsMap[DEFENSE_CHAFF] = {ActionnerType::Button, 0xC7, 0x00, 1}; // F6
-    _actionsMap[DEFENSE_ECM] = {ActionnerType::Button, 0xC8, 0x00, 1}; // F7
+    _actionsMap[DEFENSE_ECM] = {ActionnerType::Button, 0xC8, 0xC8, 0}; // F7
 
     _actionsMap[ENERGY_SYSTEMS] = {ActionnerType::Button, 0xD8, 0x00, 1}; // LEFT
     _actionsMap[ENERGY_ENGINE] = {ActionnerType::Button, 0xDA, 0x00, 1}; // UP
