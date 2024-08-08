@@ -1,6 +1,7 @@
 #pragma once
 #include <Arduino.h>
 #include <map>
+#include <vector>
 #include <PanelActions.h>
 
 enum ActionnerType : uint8_t
@@ -33,6 +34,17 @@ struct ActionMapperItem
         : type(t), pressedKey(pk), releasedKey(rk), pressCount(pc), state(as) {}
 };
 
+class ToggleButton
+{
+public:
+    ActionnerState localState = ActionnerState::Init;
+    ActionnerState remoteState = ActionnerState::Init;
+    unsigned long syncTS = 0;
+    unsigned long sentTS = 0;
+    ToggleButton();
+    bool isInconsistent();
+};
+
 class ActionMapperClass
 {
 public:
@@ -43,12 +55,19 @@ public:
     void LoadDefaultMap();
     void SetItemConfig(uint8_t item, ActionMapperItem itemConfig);
     void TriggerActionItem(uint8_t item, bool pressed, uint8_t count);
-
+    std::vector<uint8_t> GetInconsistencies();
+    void ClearInconsistencies();
+    void RebuildToggleList();
+    void UpdateRemoteStatus();
+    void UpdateLocalStatus(uint8_t item, bool physicalStatus);
+    
     void registerGetGameStatusHandler(std::function<ActionnerState(uint8_t item)> handler);
     void registerSetGameStatusHandler(std::function<void(uint8_t item, ActionnerState status)> handler);
     void registerSendKeyHandler(std::function<void(uint8_t keyCode, bool pressed, u_int8_t count)> handler);
 private:
     std::map<uint8_t, ActionMapperItem> _actionsMap;
+    std::map<uint8_t, ToggleButton*> _toggles;
+    std::vector<uint8_t> _inconsistentToggles;
     std::function<ActionnerState(uint8_t item)> _getGameStatus = nullptr;
     std::function<void(uint8_t item, ActionnerState status)> _setGameStatus = nullptr;
     std::function<void(uint8_t keyCode, bool pressed, u_int8_t count)> _sendKey = nullptr;

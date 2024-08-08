@@ -1,11 +1,8 @@
-/* I2C slave Address Scanner
-Kutscher07: Modified for TTGO TQ board with builtin OLED
-Quelle: https://github.com/espressif/arduino-esp32/issues/977
-*/
-
+const char  infoString []   = "EDControlPanel V1.0.0";
 #include <Arduino.h>
 
 #include <EDIpcProtocolSlave.h>
+#include <EDGameVariables.h>
 #include <Keyboard.h>
 
 #define SDA1 SDA // 2
@@ -20,8 +17,8 @@ int hasConfigChange = 0;
 int requestSerial = -1;
 volatile char * currentStatus;
 
-
-
+boolean outputUI = false;
+boolean startup = true;
 
 #if defined(ESP8266) || defined(ESP32)
 
@@ -43,7 +40,7 @@ int GetFreeRam() {
 #endif
 
 void DisplayFreeram() {
-  Serial.print(F("- SRAM left: "));
+  Serial.print(F("L\tSRAM left: "));
   Serial.println(GetFreeRam());
 }
 
@@ -54,7 +51,7 @@ void setup()
   Wire.begin(0x12);
   Wire.setClock(400000);
 
-  _EDIpcProtocol = new EDIpcProtocolSlave(&Wire);
+  _EDIpcProtocol = new EDIpcProtocolSlave(&Wire, SIGNAL_MASTER_PIN);
 
   currentStarSystem = (char *)malloc(21);
   memset(currentStarSystem, 0, 21);
@@ -63,6 +60,35 @@ void setup()
   // event handler initializations
   
   _EDIpcProtocol->begin();
+
+  startup = false;
+}
+
+/// @brief Serial command I
+void sendInfo()
+{
+  Serial.print("I\t");
+  Serial.println(infoString);
+}
+
+void readSerialLine(char * res, int maxsize, char separator)
+{
+  static char buffer[100 + 1] = {0};
+  static size_t size = 0;
+  size = Serial.readBytesUntil(separator, buffer, 100);
+  buffer[size] = 0;
+  if (res != nullptr)
+    strncpy(res, buffer, maxsize);
+}
+
+void readSeparator()
+{
+  while (Serial.available())
+  {
+    char c = Serial.read();
+    if ((c == '\t') || (c == 0))
+      return;
+  }
 }
 
 void parseInput()
@@ -91,14 +117,129 @@ void parseInput()
       delay(10);
       digitalWrite(SIGNAL_MASTER_PIN, HIGH);
       DisplayFreeram();
+    } 
+    else if (command == 'S')
+    {
+      outputUI = false;
+      Serial.println("S"); //silent
+    }
+    else if (command == 'H')
+    {
+      if (startup)
+        Serial.println("h");
+      else
+        Serial.println("H"); // Hello
+    }
+    else if (command == 'V')
+    {
+      Serial.println("V"); //verbose
+      sendInfo();
+      outputUI = true;
+    }
+    else if (command == 'I')
+    {
+      sendInfo();
+    }
+    else if (command == 'l')
+    {
+      readSeparator();
+      readSerialLine(EDGameVariables.LocationSystemName, 20, '\t');
+      readSerialLine(EDGameVariables.LocationStationName, 20, '\t');
+      readSerialLine(EDGameVariables.LocalAllegiance, 20, '\t');
+      readSerialLine(EDGameVariables.SystemSecurity, 20, '\0');
+      Serial.print("l\tEDGameVariables.LocationSystemName:");
+      Serial.print(EDGameVariables.LocationSystemName);
+      Serial.print("\tEDGameVariables.LocationStationName:");
+      Serial.print(EDGameVariables.LocationStationName);
+      Serial.print("\tEDGameVariables.LocalAllegiance:");
+      Serial.print(EDGameVariables.LocalAllegiance);
+      Serial.print("\tEDGameVariables.SystemSecurity:");
+      Serial.println(EDGameVariables.SystemSecurity);
+      Serial.print("L\told update flags: ");
+      Serial.print(_EDIpcProtocol->_updateFlag, 2);
+      _EDIpcProtocol->addUpdate(UPDATE_CATEGORY::UC_LOCATION);
+      Serial.print(" new flag : ");
+      Serial.println(_EDIpcProtocol->_updateFlag, 2);
+      _EDIpcProtocol->signalMaster();
+    }
+    else if (command == 'G')
+    {
+      readSeparator();
+      readSerialLine(EDGameVariables.InfosCommanderName, 20, '\t');
+      readSerialLine(EDGameVariables.InfosShipName, 20, '\0');
+      Serial.print("g\t");
+      Serial.print(EDGameVariables.InfosCommanderName);
+      Serial.print("\t");
+      Serial.println(EDGameVariables.InfosShipName);
+      Serial.print("L\told update flags: ");
+      Serial.print(_EDIpcProtocol->_updateFlag, 2);
+      _EDIpcProtocol->addUpdate(UPDATE_CATEGORY::UC_INFOS);
+      Serial.print(" new flag : ");
+      Serial.println(_EDIpcProtocol->_updateFlag, 2);
+      _EDIpcProtocol->signalMaster();
+    }
+    else if (command == 'F')
+    {
+      Serial.readBytes((uint8_t *)(&EDGameVariables.StatusFlags1), 4);
+      Serial.readBytes((uint8_t *)(&EDGameVariables.StatusFlags2), 4);
+      readSerialLine(EDGameVariables.StatusLegal, 20, '\0');
+      Serial.print("f\t");
+      Serial.println(EDGameVariables.StatusLegal);
+      Serial.print("L\told update flags: ");
+      Serial.print(_EDIpcProtocol->_updateFlag, 2);
+      _EDIpcProtocol->addUpdate(UPDATE_CATEGORY::UC_STATUS);
+      Serial.print(" new flag : ");
+      Serial.println(_EDIpcProtocol->_updateFlag, 2);
+      _EDIpcProtocol->signalMaster();
+    }
+    else if (command == 'M')
+    {
+      Serial.readBytes((uint8_t *)(&EDGameVariables.LoadoutFlags1), 4);
+      Serial.readBytes((uint8_t *)(&EDGameVariables.LoadoutFlags2), 4);
+      readSerialLine(nullptr, 20, '\0');
+      _EDIpcProtocol->addUpdate(UPDATE_CATEGORY::UC_STATUS);
+      _EDIpcProtocol->signalMaster();
+    }
+    else if (command == 'N')
+    {
+      readSeparator();
+      readSerialLine(EDGameVariables.Navroute1, 20, '\t');
+      readSerialLine(EDGameVariables.Navroute2, 20, '\t');
+      readSerialLine(EDGameVariables.Navroute3, 20, '\0');
+      Serial.print("n\t");
+      Serial.print(EDGameVariables.Navroute1);
+      Serial.print("\t");
+      Serial.print(EDGameVariables.Navroute2);
+      Serial.print("\t");
+      Serial.println(EDGameVariables.Navroute3);
+      Serial.print("L\told update flags: ");
+      Serial.print(_EDIpcProtocol->_updateFlag, 2);
+      _EDIpcProtocol->addUpdate(UPDATE_CATEGORY::UC_LOCATION);
+      Serial.print(" new flag : ");
+      Serial.println(_EDIpcProtocol->_updateFlag, 2);
+      _EDIpcProtocol->signalMaster();
+    }
+    else if (command == 'A')
+    {
+      readSeparator();
+      readSerialLine(EDGameVariables.AlertMessage1, 20, '\t');
+      readSerialLine(EDGameVariables.AlertMessage2, 20, '\t');
+      readSerialLine(EDGameVariables.AlertMessage3, 20, '\0');
+      _EDIpcProtocol->addUpdate(UPDATE_CATEGORY::UC_URGENT_INFO);
+      _EDIpcProtocol->signalMaster();
     }
   }
 }
 
-unsigned long n = 0;
+unsigned long lasttick = 0;
 void loop()
 {
   parseInput();
   _EDIpcProtocol->updateDevices();
-  delay(5);   
+  delay(5);
+  if (millis() - lasttick > 30000)
+  {
+    DisplayFreeram();
+    lasttick = millis();
+  }
 }

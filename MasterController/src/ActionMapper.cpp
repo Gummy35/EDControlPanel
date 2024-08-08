@@ -3,6 +3,8 @@
 #include <ArduinoJson.h>
 #include <Logger.h>
 
+#define SYNC_TOLERANCE 5000
+
 ActionMapperClass::ActionMapperClass()
 {
 
@@ -10,11 +12,12 @@ ActionMapperClass::ActionMapperClass()
 
 void ActionMapperClass::Init()
 {
-    if (!Load())
-    {
-        LoadDefaultMap();
-        Save();
-    }
+    LoadDefaultMap();
+    // if (!Load())
+    // {
+    //     LoadDefaultMap();
+    //     Save();
+    // }
 }
 
 bool ActionMapperClass::Load() {
@@ -50,6 +53,7 @@ bool ActionMapperClass::Load() {
     }
 
     file.close();
+    RebuildToggleList();    
     return true;
 }
 
@@ -84,10 +88,10 @@ void ActionMapperClass::LoadDefaultMap()
 {
     _actionsMap.clear();
 
-    _actionsMap[SRV_1] = {ActionnerType::Button, 'U', 0x00, 1}; // U TurretMode
-    _actionsMap[SRV_2] = {ActionnerType::Button, 'X', 0x00, 1}; // X Handbrake
-    _actionsMap[SRV_3] = {ActionnerType::Button, 'R', 0x00, 1}; // X Recall/dismiss ship
-    _actionsMap[SRV_4] = {ActionnerType::Button, 'Z', 0x00, 1}; // Z Drive Assist
+    _actionsMap[SRV_1] = {ActionnerType::Button, 'u', 0x00, 1}; // U TurretMode
+    _actionsMap[SRV_2] = {ActionnerType::Button, 'x', 0x00, 1}; // X Handbrake
+    _actionsMap[SRV_3] = {ActionnerType::Button, 'r', 0x00, 1}; // X Recall/dismiss ship
+    _actionsMap[SRV_4] = {ActionnerType::Button, 'z', 0x00, 1}; // Z Drive Assist
 
     _actionsMap[FIGHTER_ATTACK] = {ActionnerType::Button, 0xE3, 0x00, 1}; // NP3
     _actionsMap[FIGHTER_DEFEND] = {ActionnerType::Button, 0xE1, 0x00, 1}; // NP1
@@ -108,54 +112,56 @@ void ActionMapperClass::LoadDefaultMap()
     _actionsMap[STARNAV_NEXT_SYSTEM] = {ActionnerType::Button, 0xCD, 0x00, 1}; // F12
 
     _actionsMap[DEFENSE_SHIELD_CELL] = {ActionnerType::Button, 0xC6, 0x00, 1}; // F5
-    _actionsMap[DEFENSE_HEAT_SINK] = {ActionnerType::Button, 'V', 0x00, 1}; // V
+    _actionsMap[DEFENSE_HEAT_SINK] = {ActionnerType::Button, 'v', 0x00, 1}; // V
     _actionsMap[DEFENSE_CHAFF] = {ActionnerType::Button, 0xC7, 0x00, 1}; // F6
-    _actionsMap[DEFENSE_ECM] = {ActionnerType::Button, 0xC8, 0x00, 0}; // F7
+    _actionsMap[DEFENSE_ECM] = {ActionnerType::Button, 0xC8, 0x00, 1}; // F7
 
     _actionsMap[ENERGY_SYSTEMS] = {ActionnerType::Button, 0xD8, 0x00, 1}; // LEFT
     _actionsMap[ENERGY_ENGINE] = {ActionnerType::Button, 0xDA, 0x00, 1}; // UP
     _actionsMap[ENERGY_WEAPONS] = {ActionnerType::Button, 0xD7, 0x00, 1}; // RIGHT
     _actionsMap[ENERGY_BALANCE] = {ActionnerType::Button, 0xD9, 0x00, 1}; // DOWN
 
-    _actionsMap[COCKPIT_MODE] = {ActionnerType::Button, 'M', 0x00, 1}; // M 
+    _actionsMap[COCKPIT_MODE] = {ActionnerType::Button, 'm', 0x00, 1}; // M 
 
     _actionsMap[TARGETING_MOST_HOSTILE] = {ActionnerType::Button, 0x00, 0x00, 1};
-    _actionsMap[TARGETING_MAIN_THREAT] = {ActionnerType::Button, 'H', 0x00, 1}; // H
+    _actionsMap[TARGETING_MAIN_THREAT] = {ActionnerType::Button, 'h', 0x00, 1}; // H
     _actionsMap[TARGETING_PREVIOUS_THREAT] = {ActionnerType::Button, 0xC9, 0x00, 1}; // F8
     _actionsMap[TARGETING_NEXT_THREAT] = {ActionnerType::Button, 0xCA, 0x00, 1}; //F9
-    _actionsMap[TARGETING_NEXT_TARGET] = {ActionnerType::Button, 'G', 0x00, 1}; // G
-    _actionsMap[TARGETING_NEXT_SUBSYS] = {ActionnerType::Button, 'Y', 0x00, 1}; // Y
-    _actionsMap[TARGETING_NEXT_GROUP] = {ActionnerType::Button, 'N', 0x00, 1}; // N
+    _actionsMap[TARGETING_NEXT_TARGET] = {ActionnerType::Button, 'g', 0x00, 1}; // G
+    _actionsMap[TARGETING_NEXT_SUBSYS] = {ActionnerType::Button, 'y', 0x00, 1}; // Y
+    _actionsMap[TARGETING_NEXT_GROUP] = {ActionnerType::Button, 'n', 0x00, 1}; // N
 
-    _actionsMap[ENGINE_CRUISE] = {ActionnerType::Button, 'K', 0x00, 1}; // K
-    _actionsMap[ENGINE_JUMP] = {ActionnerType::Button, 'I', 0x00, 1}; // I
-    _actionsMap[ENGINE_DISENGAGE] = {ActionnerType::Button, 'K', 0x00, 1}; // K
-    _actionsMap[ENGINE_FULL_STOP] = {ActionnerType::Button, 'X', 0x00, 1}; // X
+    _actionsMap[ENGINE_CRUISE] = {ActionnerType::Button, 'k', 0x00, 1}; // K
+    _actionsMap[ENGINE_JUMP] = {ActionnerType::Button, 'i', 0x00, 1}; // I
+    _actionsMap[ENGINE_DISENGAGE] = {ActionnerType::Button, 'k', 0x00, 1}; // K
+    _actionsMap[ENGINE_FULL_STOP] = {ActionnerType::Button, 'x', 0x00, 1}; // X
 
-    _actionsMap[SHIP_SILENT_RUNNING] = {ActionnerType::Toggle, 0xD4, 0x00, 1, ActionnerState::Init}; // SUPPR
+    _actionsMap[SHIP_SILENT_RUNNING] = {ActionnerType::Toggle, 0xD4, 0xD4, 1, ActionnerState::Init}; // SUPPR
     _actionsMap[SHIP_JETTISON_CARGO] = {ActionnerType::Button, 0xDE, 0x00, 1}; // KP -
-    _actionsMap[SHIP_EMERGENCY_STOP] = {ActionnerType::Button, 'K', 0x00, 2}; // 2*K
-    _actionsMap[SHIP_CARGO_SCOOP] = {ActionnerType::Toggle, 0xD2, 0x00, 1, ActionnerState::Init}; // HOME
-    _actionsMap[SHIP_LIGHTS] = {ActionnerType::Toggle, 0xD1, 0x00, 1, ActionnerState::Init}; // INSERT
-    _actionsMap[SHIP_HARDPOINTS] = {ActionnerType::Toggle, 'U', 0x00, 1, ActionnerState::Init}; // U
-    _actionsMap[SHIP_LANDING_GEARS] = {ActionnerType::Toggle, 'L', 0x00, 1, ActionnerState::Init}; // L
-    _actionsMap[SHIP_FLIGHT_ASSIST] = {ActionnerType::Toggle, 'Z', 0x00, 1, ActionnerState::Init}; // Z
+    _actionsMap[SHIP_EMERGENCY_STOP] = {ActionnerType::Button, 'k', 0x00, 2}; // 2*K
+    _actionsMap[SHIP_CARGO_SCOOP] = {ActionnerType::Toggle, 0xD2, 0xD2, 1, ActionnerState::Init}; // HOME
+    _actionsMap[SHIP_LIGHTS] = {ActionnerType::Toggle, 0xD1, 0xD1, 1, ActionnerState::Init}; // INSERT
+    _actionsMap[SHIP_HARDPOINTS] = {ActionnerType::Toggle, 'u', 'u', 1, ActionnerState::Init}; // U
+    _actionsMap[SHIP_LANDING_GEARS] = {ActionnerType::Toggle, 'l', 'l', 1, ActionnerState::Init}; // L
+    _actionsMap[SHIP_FLIGHT_ASSIST] = {ActionnerType::Toggle, 'z', 'z', 1, ActionnerState::Init}; // Z
 
     _actionsMap[SCANNER_DSD] = {ActionnerType::Toggle, 0x00, 0xB2, 1}; // - BACKSPACE 
-    _actionsMap[SCANNER_PREVIOUS_FILTER] = {ActionnerType::Button, 'Q', 0x00, 1}; // Q
-    _actionsMap[SCANNER_NEXT_FILTER] = {ActionnerType::Button, 'E', 0x00, 1}; // E
+    _actionsMap[SCANNER_PREVIOUS_FILTER] = {ActionnerType::Button, 'q', 0x00, 1}; // Q
+    _actionsMap[SCANNER_NEXT_FILTER] = {ActionnerType::Button, 'e', 0x00, 1}; // E
 
     _actionsMap[SCANNER_ACS] = {ActionnerType::Toggle, 0xC5, 0xB2, 1}; // F4 - BACKSPACE
     _actionsMap[SCANNER_ZOOM_LEFT] = {ActionnerType::Discrete, 0xD9, 0x00, 1}; // DOWN
     _actionsMap[SCANNER_ZOOM_RIGHT] = {ActionnerType::Discrete, 0xDA, 0x00, 1}; // UP
     _actionsMap[SCANNER_ZOOM_CLICK] = {ActionnerType::Button, 0xDD, 0x00, 1}; // KP * - Discover analysis
-    _actionsMap[SCANNER_FREQ_LEFT] = {ActionnerType::Discrete, 'A', 0x00, 1}; // [
-    _actionsMap[SCANNER_FREQ_RIGHT] = {ActionnerType::Discrete, 'D', 0x00, 1}; // ]
-    _actionsMap[SCANNER_FREQ_TARGET] = {ActionnerType::Button, 'T', 0x00, 1}; // T
+    _actionsMap[SCANNER_FREQ_LEFT] = {ActionnerType::Discrete, 'a', 0x00, 1}; // [
+    _actionsMap[SCANNER_FREQ_RIGHT] = {ActionnerType::Discrete, 'd', 0x00, 1}; // ]
+    _actionsMap[SCANNER_FREQ_TARGET] = {ActionnerType::Button, 't', 0x00, 1}; // T
 
     _actionsMap[TARGETING_SENSORS_LEFT] = {ActionnerType::Discrete, 0xD6, 0x00, 1}; // PG DOWN
     _actionsMap[TARGETING_SENSORS_RIGHT] = {ActionnerType::Discrete, 0xD3, 0x00, 1}; // PG UP
     // #define TARGETING_SENSORS_CLICK 82
+
+    RebuildToggleList();
 }
 
 void ActionMapperClass::SetItemConfig(uint8_t item, ActionMapperItem itemConfig)
@@ -185,20 +191,74 @@ void ActionMapperClass::TriggerActionItem(uint8_t item, bool pressed, uint8_t co
         // if actionner is a discrete type (rotary button for example), 
         // send as many press count as specified by config AND call
         _sendKey(itemConfig.pressedKey, true, itemConfig.pressCount * count);        
-    } else if (itemConfig.type == ActionnerType::Toggle) {        
-        if (pressed && (itemConfig.state == ActionnerState::Inactive))
+    } else if (itemConfig.type == ActionnerType::Toggle) {     
+        if (!_toggles[item]->isInconsistent())
         {
-            _sendKey(itemConfig.pressedKey, true, itemConfig.pressCount);
-            itemConfig.state = ActionnerState::WaitingUpdate;
-            _actionsMap[item] = itemConfig;
-        } else if (!pressed && (itemConfig.state == ActionnerState::Active))
-        {
-            _sendKey(itemConfig.releasedKey, false, itemConfig.pressCount);
-            itemConfig.state = ActionnerState::WaitingUpdate;
-            _actionsMap[item] = itemConfig;
+            if (pressed) {
+                _sendKey(itemConfig.pressedKey, true, itemConfig.pressCount);
+            } else {                
+                _sendKey(itemConfig.releasedKey, true, itemConfig.pressCount);
+            }
+            _toggles[item]->sentTS = millis();
         }
+        if (pressed) {
+            _toggles[item]->localState = ActionnerState::Active;
+        } else {
+            _toggles[item]->localState = ActionnerState::Inactive;    
+        }        
     }   
 }
+
+std::vector<uint8_t> ActionMapperClass::GetInconsistencies()
+{
+    _inconsistentToggles.clear();
+
+    for (const auto& kv : _toggles) {
+        if (kv.second->isInconsistent())
+        {
+            Serial.printf("Key %d inconsistent, adding to inconsistencies", kv.first);
+            _inconsistentToggles.push_back(kv.first);
+        }
+    }
+
+    return _inconsistentToggles;
+}
+
+void ActionMapperClass::RebuildToggleList()
+{
+    for (const auto& kv : _toggles) {
+        delete kv.second;
+    }
+    
+    _toggles.clear();
+
+    for (const auto& kv : _actionsMap) {
+        if (kv.second.type == ActionnerType::Toggle)
+            _toggles[kv.first] = new ToggleButton();
+    }
+}
+
+void ActionMapperClass::ClearInconsistencies()
+{
+    _inconsistentToggles.clear();
+}
+
+void ActionMapperClass::UpdateRemoteStatus()
+{
+    unsigned long now = millis();
+    for (const auto& kv : _toggles) {
+        kv.second->syncTS = now;
+        kv.second->remoteState = _getGameStatus(kv.first);
+        Serial.printf("new remote status for %d: %d\n", kv.first, kv.second->remoteState);
+    }
+}
+
+
+void ActionMapperClass::UpdateLocalStatus(uint8_t item, bool physicalStatus)
+{
+    _toggles[item]->localState = physicalStatus ? ActionnerState::Active : ActionnerState::Inactive;
+}
+
 
 void ActionMapperClass::registerGetGameStatusHandler(std::function<ActionnerState(uint8_t item)> handler)
 {
@@ -216,3 +276,25 @@ void ActionMapperClass::registerSendKeyHandler(std::function<void(uint8_t keyCod
 }
 
 ActionMapperClass ActionMapper;
+
+ToggleButton::ToggleButton()
+{
+}
+
+bool ToggleButton::isInconsistent()
+{
+    if ((remoteState != ActionnerState::Init) && (localState != ActionnerState::Init) && (localState != remoteState))
+    {
+        Serial.print("Toggle is not in expected state :");
+        unsigned long now = millis();
+        bool isOldRemote = (now > syncTS) && ((now - syncTS) > SYNC_TOLERANCE); // inconsistent, remote update older than SYNC_TOLERANCE ms
+        bool isOldLocal = (now > sentTS) && ((now - sentTS) > SYNC_TOLERANCE); // inconsistent, local update older than SYNC_TOLERANCE ms
+        bool isInvalid = (syncTS > sentTS) && ((syncTS - sentTS) > SYNC_TOLERANCE); // inconsistent and last sent key ignored by remote update for longer than SYNC_TOLERANCE ms
+        if (isOldRemote) Serial.printf("Old remote");
+        if (isOldLocal) Serial.print("Old local");
+        if (isInvalid) Serial.print("Invalid");
+        Serial.println();
+        return isInvalid || (isOldLocal && isOldRemote); // key has been ignored or no local and no remote update for longer than SYNC_TOLERANCE ms
+    }
+    return false;
+}

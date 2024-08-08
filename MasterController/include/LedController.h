@@ -22,12 +22,15 @@ class LedControllerClass
 {
 public:
     void Init(int rck, int srck, int serin);
-    void SetGroup(const uint8_t *Ledgroup, int size, uint8_t value);
+    void SetGroup(const uint8_t *Ledgroup, int size, uint8_t value, bool updateRegisters = true);
+    void SetGroupStatus(const uint8_t *Ledgroup, int size, uint8_t value);
     void SetAllOn();
     void SetAllOff();
+    void Update();
     void Test();
 
 private:    
+    uint8_t _ledStatus[numberOfShiftRegisters * 8];
     int _serialDataPin; // = TPICSERIN;
     int _clockPin; // = TPICSRCK;
     int _latchPin; // = TPICRCK;
