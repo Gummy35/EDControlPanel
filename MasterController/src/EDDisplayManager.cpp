@@ -82,13 +82,17 @@ void EDDisplayManager::UpdatePages()
         }
     }
 
-    if ((EDGameVariables.AlertMessage1 != nullptr) && (strlen(EDGameVariables.AlertMessage1) > 0))
+    if ((EDGameVariables.AlertMessageTitle != nullptr) && (strlen(EDGameVariables.AlertMessageTitle) > 0))
     {
         AlertPage->clearBuffer();
-        snprintf(AlertPage->lines[0], 21, "~%s", EDGameVariables.AlertMessage1);
-        snprintf(AlertPage->lines[2], 21, "%s", EDGameVariables.AlertMessage2);
-        snprintf(AlertPage->lines[3], 21, "%s", EDGameVariables.AlertMessage3);
-        alertStart = millis();
+        if (EDGameVariables.AlertDuration > 0) {
+            snprintf(AlertPage->lines[0], 21, "~%s", EDGameVariables.AlertMessageTitle);
+            snprintf(AlertPage->lines[1], 21, "%s", EDGameVariables.AlertMessage1);
+            snprintf(AlertPage->lines[2], 21, "%s", EDGameVariables.AlertMessage2);
+            snprintf(AlertPage->lines[3], 21, "%s", EDGameVariables.AlertMessage3);
+        }
+        alertEnd = millis() + (EDGameVariables.AlertDuration * 1000);
+        memset(EDGameVariables.AlertMessageTitle, 0, 21);
         memset(EDGameVariables.AlertMessage1, 0, 21);
         memset(EDGameVariables.AlertMessage2, 0, 21);
         memset(EDGameVariables.AlertMessage3, 0, 21);
@@ -143,7 +147,7 @@ void EDDisplayManager::Handle()
 
     if (!AlertPage->IsEmpty())
     {
-        if (millis() - alertStart > ALERT_DURATION)
+        if (millis() > alertEnd)
             AlertPage->clearBuffer();
     }
     
