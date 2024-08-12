@@ -118,29 +118,29 @@ void parseInput()
       digitalWrite(SIGNAL_MASTER_PIN, HIGH);
       DisplayFreeram();
     } 
-    else if (command == 'S')
+    else if (command == SERIAL_COMMAND_SILENT)
     {
       outputUI = false;
       Serial.println("S"); //silent
     }
-    else if (command == 'H')
+    else if (command == SERIAL_COMMAND_HELLO)
     {
       if (startup)
         Serial.println("h");
       else
         Serial.println("H"); // Hello
     }
-    else if (command == 'V')
+    else if (command == SERIAL_COMMAND_VERBOSE)
     {
       Serial.println("V"); //verbose
       sendInfo();
       outputUI = true;
     }
-    else if (command == 'I')
+    else if (command == SERIAL_COMMAND_SENDINFOS)
     {
       sendInfo();
     }
-    else if (command == 'l')
+    else if (command == SERIAL_COMMAND_LOCATION)
     {
       readSeparator();
       readSerialLine(EDGameVariables.LocationSystemName, 20, '\t');
@@ -162,7 +162,7 @@ void parseInput()
       Serial.println(_EDIpcProtocol->_updateFlag, 2);
       _EDIpcProtocol->signalMaster();
     }
-    else if (command == 'G')
+    else if (command == SERIAL_COMMAND_GAMEINFOS)
     {
       readSeparator();
       readSerialLine(EDGameVariables.InfosCommanderName, 20, '\t');
@@ -178,10 +178,11 @@ void parseInput()
       Serial.println(_EDIpcProtocol->_updateFlag, 2);
       _EDIpcProtocol->signalMaster();
     }
-    else if (command == 'F')
+    else if (command == SERIAL_COMMAND_GAMEFLAGS)
     {
       Serial.readBytes((uint8_t *)(&EDGameVariables.StatusFlags1), 4);
       Serial.readBytes((uint8_t *)(&EDGameVariables.StatusFlags2), 4);
+      Serial.readBytes((uint8_t *)(&EDGameVariables.GuiFocus), 4);
       readSerialLine(EDGameVariables.StatusLegal, 20, '\0');
       Serial.print("f\t");
       Serial.println(EDGameVariables.StatusLegal);
@@ -192,7 +193,7 @@ void parseInput()
       Serial.println(_EDIpcProtocol->_updateFlag, 2);
       _EDIpcProtocol->signalMaster();
     }
-    else if (command == 'M')
+    else if (command == SERIAL_COMMAND_LOADOUT)
     {
       Serial.readBytes((uint8_t *)(&EDGameVariables.LoadoutFlags1), 4);
       Serial.readBytes((uint8_t *)(&EDGameVariables.LoadoutFlags2), 4);
@@ -200,7 +201,7 @@ void parseInput()
       _EDIpcProtocol->addUpdate(UPDATE_CATEGORY::UC_STATUS);
       _EDIpcProtocol->signalMaster();
     }
-    else if (command == 'N')
+    else if (command == SERIAL_COMMAND_NAVROUTE)
     {
       readSeparator();
       readSerialLine(EDGameVariables.Navroute1, 20, '\t');
@@ -219,12 +220,19 @@ void parseInput()
       Serial.println(_EDIpcProtocol->_updateFlag, 2);
       _EDIpcProtocol->signalMaster();
     }
-    else if (command == 'A')
+    else if (command == SERIAL_COMMAND_ALERTS)
     {
       readSeparator();
       readSerialLine(EDGameVariables.AlertMessage1, 20, '\t');
       readSerialLine(EDGameVariables.AlertMessage2, 20, '\t');
       readSerialLine(EDGameVariables.AlertMessage3, 20, '\0');
+      Serial.print("L\tnew alert message:");
+      Serial.print("\t");
+      Serial.print(EDGameVariables.AlertMessage1);
+      Serial.print("\t");
+      Serial.print(EDGameVariables.AlertMessage2);
+      Serial.print("\t");
+      Serial.println(EDGameVariables.AlertMessage3);
       _EDIpcProtocol->addUpdate(UPDATE_CATEGORY::UC_URGENT_INFO);
       _EDIpcProtocol->signalMaster();
     }

@@ -11,7 +11,7 @@ public:
     uint8_t requestData(uint8_t *receiveBuffer, size_t receiveBufferSize, bool strictSize = false) override;
 
     virtual bool Init();
-    uint8_t Handle();
+    uint32_t Handle();
 
     // See wire.endTransmission for standard Errors.
     // supplemental errors :

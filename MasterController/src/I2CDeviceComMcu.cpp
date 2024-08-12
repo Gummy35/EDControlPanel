@@ -32,9 +32,9 @@ bool I2CDeviceComMcu::Init()
     return false;
 }
 
-uint8_t I2CDeviceComMcu::Handle()
+uint32_t I2CDeviceComMcu::Handle()
 {
-    uint8_t changes = 0;
+    uint32_t changes = 0;
     if (_hasComMcuInterrupt || (millis() - lastCheck > 2000))
     {
         changes = EDIpcProtocolMaster::instance->retrieveChanges();

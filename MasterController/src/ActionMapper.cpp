@@ -2,8 +2,13 @@
 #include <LittleFS.h>
 #include <ArduinoJson.h>
 #include <Logger.h>
+#include <EDGameVariables.h>
 
 #define SYNC_TOLERANCE 5000
+#define FIRE_WEAPON1 0xE8
+#define FIRE_WEAPON2 0xE9
+
+
 
 ActionMapperClass::ActionMapperClass()
 {
@@ -123,7 +128,7 @@ void ActionMapperClass::LoadDefaultMap()
 
     _actionsMap[COCKPIT_MODE] = {ActionnerType::Button, 'm', 0x00, 1}; // M 
 
-    _actionsMap[TARGETING_MOST_HOSTILE] = {ActionnerType::Button, 0x00, 0x00, 1};
+    _actionsMap[TARGETING_MOST_HOSTILE] = {ActionnerType::Button, 'c', 0x00, 1};
     _actionsMap[TARGETING_MAIN_THREAT] = {ActionnerType::Button, 'h', 0x00, 1}; // H
     _actionsMap[TARGETING_PREVIOUS_THREAT] = {ActionnerType::Button, 0xC9, 0x00, 1}; // F8
     _actionsMap[TARGETING_NEXT_THREAT] = {ActionnerType::Button, 0xCA, 0x00, 1}; //F9
@@ -145,7 +150,7 @@ void ActionMapperClass::LoadDefaultMap()
     _actionsMap[SHIP_LANDING_GEARS] = {ActionnerType::Toggle, 'l', 'l', 1, ActionnerState::Init}; // L
     _actionsMap[SHIP_FLIGHT_ASSIST] = {ActionnerType::Toggle, 'z', 'z', 1, ActionnerState::Init}; // Z
 
-    _actionsMap[SCANNER_DSD] = {ActionnerType::Toggle, 0x00, 0xB2, 1}; // - BACKSPACE 
+    _actionsMap[SCANNER_DSD] = {ActionnerType::Toggle, 0xC3, 0xB2, 1}; // F2 - BACKSPACE 
     _actionsMap[SCANNER_PREVIOUS_FILTER] = {ActionnerType::Button, 'q', 0x00, 1}; // Q
     _actionsMap[SCANNER_NEXT_FILTER] = {ActionnerType::Button, 'e', 0x00, 1}; // E
 
@@ -195,7 +200,21 @@ void ActionMapperClass::TriggerActionItem(uint8_t item, bool pressed, uint8_t co
         if (!_toggles[item]->isInconsistent())
         {
             if (pressed) {
-                _sendKey(itemConfig.pressedKey, true, itemConfig.pressCount);
+                // Special case, we need some magic for DSD :
+                // proper design might for example use different classes for different input switches, and so on,
+                // but we are on a microcontroller. The overhead for a single specific usecase is overkill.
+                // honestly, this code probably will never be used by anyone else.
+                if (item == SCANNER_DSD) {
+                    if (!EDGameVariables.IsInDSDMode()) {                        
+                        if (!EDGameVariables.IsHudAnalysisMode()) {
+                            // Switch cockpit mode then fire weapon 1
+                            _sendKey(_actionsMap[COCKPIT_MODE].pressedKey, true, 1);
+                            _sendKey(FIRE_WEAPON1, true, 1);
+                        }
+                    }
+                }
+                else
+                    _sendKey(itemConfig.pressedKey, true, itemConfig.pressCount);
             } else {                
                 _sendKey(itemConfig.releasedKey, true, itemConfig.pressCount);
             }

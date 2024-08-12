@@ -85,6 +85,7 @@ void SetupActionMapper()
                                             EDIpcProtocol->sendKey(event); });
 
   // this handler is called by action mapper when it needs to know the physical state of a toggle switch
+  // return the expected toggle state based on game provided data  
   ActionMapper.registerGetGameStatusHandler([](uint8_t actionId) -> ActionnerState
                                             {
                                               if (actionId == SHIP_SILENT_RUNNING)
@@ -102,12 +103,13 @@ void SetupActionMapper()
                                                 return EDGameVariables.IsFlightAssistOff() ? ActionnerState::Inactive : ActionnerState::Active;
                                               // TODO : find how we can activate this baby
                                               if (actionId == SCANNER_DSD)
-                                                return ActionnerState::Inactive;
+                                                return EDGameVariables.IsInDSDMode() ? ActionnerState::Active : ActionnerState::Inactive;
                                               //   return EDGameVariables.IsDsdActive() ? ActionnerState::Active : ActionnerState::Inactive;
                                               // TODO : find how we can activate this baby
                                               if (actionId == SCANNER_ACS)
-                                                return ActionnerState::Inactive;
-                                              //   return EDGameVariables.IsAcsActive() ? ActionnerState::Active : ActionnerState::Inactive;
+                                                return EDGameVariables.IsInFSAMode() ? ActionnerState::Active : ActionnerState::Inactive;
+                                              //  return ActionnerState::Inactive;
+                                              //  return EDGameVariables.IsHudAnalysisMode() ? ActionnerState::Active : ActionnerState::Inactive;
                                               return ActionnerState::Init; });
 }
 
@@ -248,7 +250,7 @@ void TaskUpdateLedsCode(void *pvParameters)
 /// @brief FreeRTOS Task, handle comms with slave MCU
 void TaskCommsCode(void *pvParameters)
 {
-  uint8_t changes;
+  uint32_t changes;
   for (;;)
   {
     // sync changes with slave MCU
@@ -260,7 +262,7 @@ void TaskCommsCode(void *pvParameters)
     }
 
     // if status flags changed, update toggles remote status
-    if (changes & (uint8_t)UPDATE_CATEGORY::UC_STATUS)
+    if (changes & (uint32_t)UPDATE_CATEGORY::UC_STATUS)
     {
       debug(Serial.println("New remote status received, updating toggles"))
       ActionMapper.UpdateRemoteStatus();
@@ -272,8 +274,7 @@ void TaskCommsCode(void *pvParameters)
       }
       displayManager->Invalidate();
       displayManager->Unlock();
-    }
-
+    }    
     // if (changes & (uint8_t)UPDATE_CATEGORY::UC_LOCATION)
     // {
     //   displayLocation();

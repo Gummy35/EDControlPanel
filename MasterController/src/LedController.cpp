@@ -52,6 +52,11 @@ void LedControllerClass::Update()
   {
     memset(_ledStatus, 2, numberOfShiftRegisters * 8);
   }
+  else if (!EDGameVariables.IsPowerDistributorEnabled())
+  {
+    memset(_ledStatus, 0, numberOfShiftRegisters * 8);
+    SetGroupStatus(LEDS_ENERGY, sizeof(LEDS_ENERGY), 3);
+  }
   else
   {
     SetGroupStatus(LEDS_SRV, sizeof(LEDS_SRV), EDGameVariables.IsInSRV());
@@ -60,8 +65,14 @@ void LedControllerClass::Update()
     SetGroupStatus(LEDS_STARNAV, sizeof(LEDS_STARNAV), 1);
     SetGroupStatus(LEDS_ENERGY, sizeof(LEDS_ENERGY), 1);
 
-    bool isFlying = (!EDGameVariables.IsDocked()) && (!EDGameVariables.IsLanded());
-    bool canFsd = isFlying && (!EDGameVariables.IsFsdMassLocked()) && (!EDGameVariables.IsFsdCharging()) && (!EDGameVariables.IsFsdCooldown()) && (!EDGameVariables.IsFsdJump());
+    bool isFlying = (!EDGameVariables.IsDocked()) 
+                    && (!EDGameVariables.IsLanded());
+    bool canFsd = isFlying 
+                  && (!EDGameVariables.IsFsdMassLocked()) 
+                  && (!EDGameVariables.IsFsdCharging()) 
+                  && (!EDGameVariables.IsFsdCooldown()) 
+                  && (!EDGameVariables.IsFsdJump())
+                  && (EDGameVariables.IsHyperdriveEnabled());
 
     _ledStatus[STARNAV_NEXT_SYSTEM] = (EDGameVariables.Navroute1 != nullptr) && (EDGameVariables.Navroute1[0] != ' ') && (EDGameVariables.Navroute1[0] != 0);
 
@@ -94,6 +105,10 @@ void LedControllerClass::Update()
       {
         // Should check equipment status
         SetGroupStatus(LEDS_DEFENSE, sizeof(LEDS_DEFENSE), 1);
+        _ledStatus[DEFENSE_SHIELD_CELL] = EDGameVariables.IsShieldCellbankEnabled();
+        _ledStatus[DEFENSE_HEAT_SINK] = EDGameVariables.IsHeatsinkLauncherEnabled();
+        _ledStatus[DEFENSE_CHAFF] = EDGameVariables.IsChaffLauncherEnabled();
+        _ledStatus[DEFENSE_ECM] = EDGameVariables.IsEcmEnabled();
       }
     }
 

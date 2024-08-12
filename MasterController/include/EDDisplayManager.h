@@ -6,6 +6,7 @@
 
 #define CAROUSEL_PAGE_DURATION 5000
 #define BLINK_INTERVAL 500
+#define ALERT_DURATION 10000
 
 class EDDisplayManager
 {
@@ -16,6 +17,7 @@ public:
     DisplayPage* NavPage;
     DisplayPage* NavRoutePage;
     DisplayPage* ErrorPage;
+    DisplayPage* AlertPage;
 
     EDDisplayManager(I2CDeviceDisplay* display);
     void Handle();
@@ -29,6 +31,7 @@ protected:
     I2CDeviceDisplay* _display;
     unsigned long lastTick = 0;
     unsigned long lastBlink = 0;
+    unsigned long alertStart = 0;
     int _pageIdx = 0;
     std::vector<DisplayPage*> _Carousel;
     DisplayPage* _current;

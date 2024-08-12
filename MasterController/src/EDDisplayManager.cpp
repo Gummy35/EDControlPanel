@@ -22,6 +22,7 @@ EDDisplayManager::EDDisplayManager(I2CDeviceDisplay *display)
     NavPage = new DisplayPage();
     NavRoutePage = new DisplayPage();
     ErrorPage = new DisplayPage();
+    AlertPage = new DisplayPage();
     _current = nullptr;
 
     _Carousel.push_back(CommanderPage);
@@ -81,6 +82,18 @@ void EDDisplayManager::UpdatePages()
         }
     }
 
+    if ((EDGameVariables.AlertMessage1 != nullptr) && (strlen(EDGameVariables.AlertMessage1) > 0))
+    {
+        AlertPage->clearBuffer();
+        snprintf(AlertPage->lines[0], 21, "~%s", EDGameVariables.AlertMessage1);
+        snprintf(AlertPage->lines[2], 21, "%s", EDGameVariables.AlertMessage2);
+        snprintf(AlertPage->lines[3], 21, "%s", EDGameVariables.AlertMessage3);
+        alertStart = millis();
+        memset(EDGameVariables.AlertMessage1, 0, 21);
+        memset(EDGameVariables.AlertMessage2, 0, 21);
+        memset(EDGameVariables.AlertMessage3, 0, 21);
+    }
+
     StatusPage->clearBuffer();
     strcpy(StatusPage->lines[0], "$//Status");
     if ((strncmp(EDGameVariables.StatusLegal, "Clean", 5) == 0) || (strncmp(EDGameVariables.StatusLegal, "Speeding", 8) == 0))
@@ -128,10 +141,20 @@ void EDDisplayManager::Handle()
 {
     DisplayPage* page = _current;
 
+    if (!AlertPage->IsEmpty())
+    {
+        if (millis() - alertStart > ALERT_DURATION)
+            AlertPage->clearBuffer();
+    }
+    
     if (!ErrorPage->IsEmpty())
     {
         page = ErrorPage;
     } 
+    else if (!AlertPage->IsEmpty())
+    {
+        page = AlertPage;
+    }
     // If navigation infos available, display it
     else if (!NavPage->IsEmpty())
     {
