@@ -85,7 +85,7 @@ void SetupActionMapper()
                                             EDIpcProtocol->sendKey(event); });
 
   // this handler is called by action mapper when it needs to know the physical state of a toggle switch
-  // return the expected toggle state based on game provided data  
+  // return the expected toggle state based on game provided data
   ActionMapper.registerGetGameStatusHandler([](uint8_t actionId) -> ActionnerState
                                             {
                                               if (actionId == SHIP_SILENT_RUNNING)
@@ -111,6 +111,30 @@ void SetupActionMapper()
                                               //  return ActionnerState::Inactive;
                                               //  return EDGameVariables.IsHudAnalysisMode() ? ActionnerState::Active : ActionnerState::Inactive;
                                               return ActionnerState::Init; });
+  ActionMapper.registerToggleActionHandler([](uint8_t item, ActionMapperItem *itemConfig, bool pressed, u_int8_t count)
+                                           {
+                                             if (pressed)
+                                             {
+                                               if (item == SCANNER_DSD)
+                                               {
+                                                 if (!EDGameVariables.IsInDSDMode())
+                                                 {
+                                                   if (!EDGameVariables.IsHudAnalysisMode())
+                                                   {
+                                                     // Switch cockpit mode then fire weapon 1
+                                                     ActionMapper.SendKey(ActionMapper.GetItemConfig(COCKPIT_MODE).pressedKey, true, 1);
+                                                     ActionMapper.SendKey(FIRE_WEAPON1, true, 1);
+                                                   }
+                                                 }
+                                               }
+                                               else
+                                                 ActionMapper.SendKey(itemConfig->pressedKey, true, itemConfig->pressCount);
+                                             }
+                                             else
+                                             {
+                                               ActionMapper.SendKey(itemConfig->releasedKey, true, itemConfig->pressCount);
+                                             }
+                                           });
 }
 
 /// @brief this method is used to update action mapper toggle buttons state, without waiting for an action on it
@@ -265,20 +289,19 @@ void TaskCommsCode(void *pvParameters)
     if (changes & (uint32_t)UPDATE_CATEGORY::UC_STATUS)
     {
       debug(Serial.println("New remote status received, updating toggles"))
-      ActionMapper.UpdateRemoteStatus();
+          ActionMapper.UpdateRemoteStatus();
       displayManager->Lock();
-      if (EDGameVariables.IsFsdJump()) {
+      if (EDGameVariables.IsFsdJump())
+      {
         displayManager->NavPage->Assign(displayManager->NavRoutePage);
-      } else {
+      }
+      else
+      {
         displayManager->NavPage->clearBuffer();
       }
       displayManager->Invalidate();
       displayManager->Unlock();
-    }    
-    // if (changes & (uint8_t)UPDATE_CATEGORY::UC_LOCATION)
-    // {
-    //   displayLocation();
-    // }
+    }
 
     vTaskDelay(5);
   }
@@ -336,12 +359,13 @@ void displayChars(int page)
 {
   displayManager->Lock();
   displayManager->ErrorPage->clearBuffer();
-  for (int i=0;i<20;i++) {
-    displayManager->ErrorPage->lines[0][i] = ((page*61) + i+1) % 256;
-    displayManager->ErrorPage->lines[1][i] = ((page*61) + i+21) % 256;
-    displayManager->ErrorPage->lines[2][i] = ((page*61) + i+41) % 256;
-    displayManager->ErrorPage->lines[3][i] = ((page*61) + i+61) % 256;
-  }    
+  for (int i = 0; i < 20; i++)
+  {
+    displayManager->ErrorPage->lines[0][i] = ((page * 61) + i + 1) % 256;
+    displayManager->ErrorPage->lines[1][i] = ((page * 61) + i + 21) % 256;
+    displayManager->ErrorPage->lines[2][i] = ((page * 61) + i + 41) % 256;
+    displayManager->ErrorPage->lines[3][i] = ((page * 61) + i + 61) % 256;
+  }
   displayManager->Invalidate();
   displayManager->Unlock();
 }
@@ -527,10 +551,8 @@ void SetupWebSerialCommands()
                         else if (d.equals("test.display4"))
                         {
                           displayChars(3);
-                        }
-                      });
+                        } });
 }
-
 
 void setup()
 {

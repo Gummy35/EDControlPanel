@@ -5,10 +5,6 @@
 #include <EDGameVariables.h>
 
 #define SYNC_TOLERANCE 5000
-#define FIRE_WEAPON1 0xE8
-#define FIRE_WEAPON2 0xE9
-
-
 
 ActionMapperClass::ActionMapperClass()
 {
@@ -25,6 +21,8 @@ void ActionMapperClass::Init()
     // }
 }
 
+/// @brief Unused at the moment
+/// @return 
 bool ActionMapperClass::Load() {
     File file = LittleFS.open("/actionsMap.json", "r");
     if (!file) {        
@@ -62,6 +60,8 @@ bool ActionMapperClass::Load() {
     return true;
 }
 
+/// @brief Unused at the moment
+/// @return 
 void ActionMapperClass::Save() {
     File file = LittleFS.open("/actionsMap.json", "w");
     if (!file) {
@@ -174,6 +174,10 @@ void ActionMapperClass::SetItemConfig(uint8_t item, ActionMapperItem itemConfig)
     _actionsMap[item] = itemConfig;
 }
 
+ActionMapperItem ActionMapperClass::GetItemConfig(uint8_t item)
+{
+    return _actionsMap[item];
+}
 
 void ActionMapperClass::TriggerActionItem(uint8_t item, bool pressed, uint8_t count)
 {
@@ -199,25 +203,7 @@ void ActionMapperClass::TriggerActionItem(uint8_t item, bool pressed, uint8_t co
     } else if (itemConfig.type == ActionnerType::Toggle) {     
         if (!_toggles[item]->isInconsistent())
         {
-            if (pressed) {
-                // Special case, we need some magic for DSD :
-                // proper design might for example use different classes for different input switches, and so on,
-                // but we are on a microcontroller. The overhead for a single specific usecase is overkill.
-                // honestly, this code probably will never be used by anyone else.
-                if (item == SCANNER_DSD) {
-                    if (!EDGameVariables.IsInDSDMode()) {                        
-                        if (!EDGameVariables.IsHudAnalysisMode()) {
-                            // Switch cockpit mode then fire weapon 1
-                            _sendKey(_actionsMap[COCKPIT_MODE].pressedKey, true, 1);
-                            _sendKey(FIRE_WEAPON1, true, 1);
-                        }
-                    }
-                }
-                else
-                    _sendKey(itemConfig.pressedKey, true, itemConfig.pressCount);
-            } else {                
-                _sendKey(itemConfig.releasedKey, true, itemConfig.pressCount);
-            }
+            _toggleAction(item, &itemConfig, pressed, count);
             _toggles[item]->sentTS = millis();
         }
         if (pressed) {
@@ -278,6 +264,10 @@ void ActionMapperClass::UpdateLocalStatus(uint8_t item, bool physicalStatus)
     _toggles[item]->localState = physicalStatus ? ActionnerState::Active : ActionnerState::Inactive;
 }
 
+void ActionMapperClass::registerToggleActionHandler(std::function<void(uint8_t item, ActionMapperItem* itemConfig, bool pressed, u_int8_t count)> handler)
+{
+    _toggleAction = handler;
+}
 
 void ActionMapperClass::registerGetGameStatusHandler(std::function<ActionnerState(uint8_t item)> handler)
 {
@@ -292,6 +282,11 @@ void ActionMapperClass::registerSetGameStatusHandler(std::function<void(uint8_t 
 void ActionMapperClass::registerSendKeyHandler(std::function<void(uint8_t keyCode, bool pressed, u_int8_t count)> handler)
 {
     _sendKey = handler;
+}
+
+void ActionMapperClass::SendKey(uint8_t keyCode, bool pressed, u_int8_t count)
+{
+    _sendKey(keyCode, pressed, count);
 }
 
 ActionMapperClass ActionMapper;
