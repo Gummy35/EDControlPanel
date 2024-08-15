@@ -46,7 +46,10 @@ void I2CDeviceDisplay::Reset()
   }
 }
 
-
+LiquidCrystal_I2C *I2CDeviceDisplay::GetLcdController()
+{
+    return _display;
+}
 
 size_t I2CDeviceDisplay::write(uint8_t c)
 {

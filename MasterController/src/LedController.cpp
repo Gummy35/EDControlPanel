@@ -39,7 +39,6 @@ void LedControllerClass::SetGroupStatus(const uint8_t *Ledgroup, int size, uint8
     _ledStatus[Ledgroup[i]] = value;
 }
 
-
 void LedControllerClass::Update()
 {
   static unsigned long lastUpdate = millis();
@@ -48,86 +47,96 @@ void LedControllerClass::Update()
   // clear all leds
   memset(_ledStatus, 0, numberOfShiftRegisters * 8);
 
-  if (EDGameVariables.IsBeingInterdicted())
+  if (EDGameVariables.IsShutdown)
   {
-    memset(_ledStatus, 2, numberOfShiftRegisters * 8);
-  }
-  else if (!EDGameVariables.IsPowerDistributorEnabled())
-  {
-    memset(_ledStatus, 0, numberOfShiftRegisters * 8);
-    SetGroupStatus(LEDS_ENERGY, sizeof(LEDS_ENERGY), 3);
+    //_ledStatus[SRV_1] = 2;
   }
   else
   {
-    SetGroupStatus(LEDS_SRV, sizeof(LEDS_SRV), EDGameVariables.IsInSRV());
-    SetGroupStatus(LEDS_WING, sizeof(LEDS_WING), EDGameVariables.IsInWing());
 
-    SetGroupStatus(LEDS_STARNAV, sizeof(LEDS_STARNAV), 1);
-    SetGroupStatus(LEDS_ENERGY, sizeof(LEDS_ENERGY), 1);
-
-    bool isFlying = (!EDGameVariables.IsDocked()) 
-                    && (!EDGameVariables.IsLanded());
-    bool canFsd = isFlying 
-                  && (!EDGameVariables.IsFsdMassLocked()) 
-                  && (!EDGameVariables.IsFsdCharging()) 
-                  && (!EDGameVariables.IsFsdCooldown()) 
-                  && (!EDGameVariables.IsFsdJump())
-                  && (EDGameVariables.IsHyperdriveEnabled());
-
-    _ledStatus[STARNAV_NEXT_SYSTEM] = (EDGameVariables.Navroute1 != nullptr) && (EDGameVariables.Navroute1[0] != ' ') && (EDGameVariables.Navroute1[0] != 0);
-
-    SetGroupStatus(LEDS_TARGETING, sizeof(LEDS_TARGETING), isFlying && (!EDGameVariables.IsFsdJump()));
-
-    _ledStatus[TARGETING_NEXT_GROUP] = EDGameVariables.IsHardpointsDeployed();
-
-    if (EDGameVariables.IsFsdCharging())
+    if (!EDGameVariables.IsFsdJump())
     {
-      _ledStatus[ENGINE_CRUISE] = 2;
-      _ledStatus[ENGINE_JUMP] = 2;
-    }
-    else if (EDGameVariables.IsSupercruise())
-    {
-        _ledStatus[ENGINE_CRUISE] = 0;
-        _ledStatus[ENGINE_JUMP] = 1;
-    }
-    else if (canFsd) {
-      _ledStatus[ENGINE_CRUISE] = 1;
-      _ledStatus[ENGINE_JUMP] = 1;
-    }
+      if (EDGameVariables.IsBeingInterdicted())
+      {
+        memset(_ledStatus, 2, numberOfShiftRegisters * 8);
+      }
+      else if (!EDGameVariables.IsPowerDistributorEnabled())
+      {
+        memset(_ledStatus, 0, numberOfShiftRegisters * 8);
+        SetGroupStatus(LEDS_ENERGY, sizeof(LEDS_ENERGY), 3);
+      }
+      else
+      {
+        SetGroupStatus(LEDS_SRV, sizeof(LEDS_SRV), EDGameVariables.IsInSRV());
+        SetGroupStatus(LEDS_WING, sizeof(LEDS_WING), EDGameVariables.IsInWing());
 
-    if (EDGameVariables.IsInDanger())
-    {
-      SetGroupStatus(LEDS_DEFENSE, sizeof(LEDS_DEFENSE), 2);
+        SetGroupStatus(LEDS_STARNAV, sizeof(LEDS_STARNAV), 1);
+        SetGroupStatus(LEDS_ENERGY, sizeof(LEDS_ENERGY), 1);
+
+        bool isFlying = (!EDGameVariables.IsDocked()) && (!EDGameVariables.IsLanded());
+        bool canFsd = isFlying && (!EDGameVariables.IsFsdMassLocked()) && (!EDGameVariables.IsFsdCharging()) && (!EDGameVariables.IsFsdCooldown()) && (!EDGameVariables.IsFsdJump()) && (EDGameVariables.IsHyperdriveEnabled());
+
+        _ledStatus[STARNAV_NEXT_SYSTEM] = (EDGameVariables.Navroute1 != nullptr) && (EDGameVariables.Navroute1[0] != ' ') && (EDGameVariables.Navroute1[0] != 0);
+
+        SetGroupStatus(LEDS_TARGETING, sizeof(LEDS_TARGETING), isFlying && (!EDGameVariables.IsFsdJump()));
+
+        _ledStatus[TARGETING_NEXT_GROUP] = EDGameVariables.IsHardpointsDeployed();
+
+        if (EDGameVariables.IsFsdCharging())
+        {
+          _ledStatus[ENGINE_CRUISE] = 2;
+          _ledStatus[ENGINE_JUMP] = 2;
+        }
+        else if (EDGameVariables.IsSupercruise())
+        {
+          _ledStatus[ENGINE_CRUISE] = 0;
+          _ledStatus[ENGINE_JUMP] = 1;
+        }
+        else if (canFsd)
+        {
+          _ledStatus[ENGINE_CRUISE] = 1;
+          _ledStatus[ENGINE_JUMP] = 1;
+        }
+
+        if (EDGameVariables.IsInDanger())
+        {
+          SetGroupStatus(LEDS_DEFENSE, sizeof(LEDS_DEFENSE), 2);
+        }
+        else
+        {
+          if (isFlying)
+          {
+            // Should check equipment status
+            SetGroupStatus(LEDS_DEFENSE, sizeof(LEDS_DEFENSE), 1);
+            _ledStatus[DEFENSE_SHIELD_CELL] = EDGameVariables.IsShieldCellbankEnabled();
+            _ledStatus[DEFENSE_HEAT_SINK] = EDGameVariables.IsHeatsinkLauncherEnabled();
+            _ledStatus[DEFENSE_CHAFF] = EDGameVariables.IsChaffLauncherEnabled();
+            _ledStatus[DEFENSE_ECM] = EDGameVariables.IsEcmEnabled();
+          }
+        }
+
+        _ledStatus[ENGINE_DISENGAGE] = EDGameVariables.IsSupercruise();
+        _ledStatus[ENGINE_FULL_STOP] = isFlying;
+        // SetGroupStatus(LEDS_FIGHTERS, sizeof(LEDS_FIGHTERS), EDGameVariables.IsInMainShip() &&  );
+
+        if (EDGameVariables.IsInDSDMode() || EDGameVariables.IsInFSAMode())
+          SetGroupStatus(LEDS_SCANNER, sizeof(LEDS_SCANNER), 1);
+      }
     }
     else
     {
-      if (isFlying)
-      {
-        // Should check equipment status
-        SetGroupStatus(LEDS_DEFENSE, sizeof(LEDS_DEFENSE), 1);
-        _ledStatus[DEFENSE_SHIELD_CELL] = EDGameVariables.IsShieldCellbankEnabled();
-        _ledStatus[DEFENSE_HEAT_SINK] = EDGameVariables.IsHeatsinkLauncherEnabled();
-        _ledStatus[DEFENSE_CHAFF] = EDGameVariables.IsChaffLauncherEnabled();
-        _ledStatus[DEFENSE_ECM] = EDGameVariables.IsEcmEnabled();
-      }
+      SetGroupStatus(LEDS_ENERGY, sizeof(LEDS_ENERGY), 1);
+      _ledStatus[ENGINE_JUMP] = 2;
     }
-
-    _ledStatus[ENGINE_DISENGAGE] = EDGameVariables.IsFsdJump() || EDGameVariables.IsSupercruise();
-    _ledStatus[ENGINE_FULL_STOP] = isFlying;
-    // SetGroupStatus(LEDS_FIGHTERS, sizeof(LEDS_FIGHTERS), EDGameVariables.IsInMainShip() &&  );
-
-
-    if (EDGameVariables.IsHudAnalysisMode())
-      SetGroupStatus(LEDS_SCANNER, sizeof(LEDS_SCANNER), 1);
   }
-
   if (millis() - lastUpdate > 500)
   {
     bool alternate = ((millis() - lastUpdate) % 1000) < 500;
-    for(int i=0;i<numberOfShiftRegisters*8;i++)
+    for (int i = 0; i < numberOfShiftRegisters * 8; i++)
     {
       ledStatus = _ledStatus[i];
-      if (ledStatus == 2) ledStatus = alternate;
+      if (ledStatus == 2)
+        ledStatus = alternate;
       _tpic->setNoUpdate(i, ledStatus);
     }
     _tpic->updateRegisters();
