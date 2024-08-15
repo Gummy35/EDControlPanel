@@ -45,6 +45,7 @@ flowchart LR;
 
 ## TODO
 
+* Document all libs and IPC Protocol
 * Macro management (keys, conditions, delays...), configurable via web interface
 * Backup / restore configuration
 * Add buttons wiring diagram. The actual implantation.svg doesn't show the 1N4148 diodes necessary for the keypad matrix to work.
