@@ -4,6 +4,8 @@
 #include <ElegantOTA.h>
 #include <WebSerial.h>
 #include <Logger.h>
+#include <ActionMapper.h>
+#include <EDGameVariables.h>
 
 #define WIFI_CREDENTIALS_FILE "/wifi_credentials.txt"
 #define AP_SSID "ESP32_AP"
@@ -144,10 +146,86 @@ void EDControllerWebServerClass::_handleClearWiFi(AsyncWebServerRequest *request
   }
 }
 
+void EDControllerWebServerClass::_handleSaveHardpoints(AsyncWebServerRequest *request)
+{
+  if (request->hasArg("fire_group_count"))
+    EDGameVariables.FireGroupCount = request->arg("fire_group_count").toInt();
+
+  if (request->hasArg("hardpoint_id")) {
+    uint8_t id = request->arg("hardpoint_id").toInt();
+    uint8_t fireGroup = request->arg("fire_group").toInt() - 1;
+    uint8_t fireWeapon = request->arg("fire_weapon").toInt();
+    bool analysisMode = request->hasArg("analysis_mode") ? (request->arg("analysis_mode").toInt() == 1) : false;
+    // No validation, but why would you want to crash your game device ?????
+    ActionMapper.Hardpoints[id] = HardpointItem(fireGroup, fireWeapon, analysisMode);
+  }
+
+  ActionMapper.SaveHardpoints();
+  request->send(200, "text/plain", "Configuration saved.");
+}
+
+void EDControllerWebServerClass::_handleDeleteHardpoint(AsyncWebServerRequest *request)
+{
+  if (request->arg("id")) {
+    uint8_t id = request->arg("id").toInt();
+    if (ActionMapper.Hardpoints.find(id) != ActionMapper.Hardpoints.end())
+    {
+      ActionMapper.Hardpoints.erase(id);
+      ActionMapper.SaveHardpoints();
+      request->send(200, "text/plain", "Configuration saved.");
+      return;
+    } 
+  }
+  request->send(400, "text/plain", "Invalid request.");
+}
+
+String generateHardpointsTable(const std::map<uint8_t, HardpointItem>& hardpoints) {
+    String html;
+
+    for (const auto& entry : hardpoints) {
+        uint8_t id = entry.first;
+        const HardpointItem& item = entry.second;
+
+        html += "<div class='hardpoint-row'>";
+        html += "<div>";
+         if (id == SCANNER_DSD) 
+          html += "DSD Scanner";
+        else
+          html += String(id);
+        html += "</div>";
+        html += "<div>" + String(item.fireGroup + 1) + "</div>";
+        html += "<div>" + String(item.fireWeapon == 1 ? "Primary" : "Secondary") + "</div>";
+        html += "<div>" + String(item.analysisMode ? "Analysis" : "Combat") + "</div>";
+        html += "<div></div>";
+        html += "</div>";
+
+        // html += "<div class='hardpoint-row'>";
+        // html += "<div>";
+        //  if (id == SCANNER_DSD) 
+        //   html += "DSD Scanner";
+        // else
+        //   html += String(id);
+        // html += "</div>";
+        // html += "<div><input type='number' name='fire_group' value='" + String(item.fireGroup) + "' min='0' max='255'></div>";
+        // html += "<div><input type='number' name='fire_weapon' value='" + String(item.fireWeapon) + "' min='0' max='255'></div>";
+        // html += "<div><select name='analysis_mode'><option value='0'" + String(item.analysisMode ? "" : " selected") + ">No</option><option value='1'" + (item.analysisMode ? " selected" : "") + ">Yes</option></select></div>";
+        // html += "<div><button type='submit'>Save</button></div>";
+        // html += "</div>";
+
+    }
+
+    return html;
+}
+
 String EDControllerWebServerClass::_htmlProcessor(const String &var)
 {
   if (var == "WIFI_SSID")
     return wifi_ssid;
+  if (var == "FIRE_GROUP_COUNT")
+    return String(EDGameVariables.FireGroupCount);
+  if (var == "HARDPOINTS")
+    return generateHardpointsTable(ActionMapper.Hardpoints);
+
   return String();
 }
 
@@ -176,6 +254,10 @@ void EDControllerWebServerClass::begin()
               { this->_handleSaveWiFi(request); });
   _server->on("/clearwifi", HTTP_POST, [this](AsyncWebServerRequest *request)
               { this->_handleClearWiFi(request); });
+  _server->on("/savehardpoints", HTTP_POST, [this](AsyncWebServerRequest *request)
+              { this->_handleSaveHardpoints(request); });
+  _server->on("/deletehardpoint", HTTP_POST, [this](AsyncWebServerRequest *request)
+              { this->_handleDeleteHardpoint(request); });
   _server->serveStatic("/static/", LittleFS, "/html/");
 
   ElegantOTA.onEnd([this](bool success)

@@ -3,6 +3,7 @@
 #include <ArduinoJson.h>
 #include <Logger.h>
 #include <EDGameVariables.h>
+#include <WebSerial.h>
 
 #define SYNC_TOLERANCE 5000
 
@@ -14,16 +15,22 @@ ActionMapperClass::ActionMapperClass()
 void ActionMapperClass::Init()
 {
     LoadDefaultMap();
-    // if (!Load())
+    // if (!LoadMapping())
     // {
     //     LoadDefaultMap();
-    //     Save();
+    //     SaveMapping();
     // }
+
+    if (!LoadHardpoints())
+    {
+        LoadDefaultHardpointConfig();
+        SaveHardpoints();
+    }
 }
 
 /// @brief Unused at the moment
 /// @return 
-bool ActionMapperClass::Load() {
+bool ActionMapperClass::LoadMapping() {
     File file = LittleFS.open("/actionsMap.json", "r");
     if (!file) {        
         Logger.Log("Failed to open file for reading");
@@ -56,13 +63,13 @@ bool ActionMapperClass::Load() {
     }
 
     file.close();
-    RebuildToggleList();    
+    RebuildToggleList();
     return true;
 }
 
 /// @brief Unused at the moment
 /// @return 
-void ActionMapperClass::Save() {
+void ActionMapperClass::SaveMapping() {
     File file = LittleFS.open("/actionsMap.json", "w");
     if (!file) {
         Logger.Log("Failed to open file for writing");
@@ -169,6 +176,72 @@ void ActionMapperClass::LoadDefaultMap()
     RebuildToggleList();
 }
 
+bool ActionMapperClass::LoadHardpoints() {
+    File file = LittleFS.open("/hardpoints.json", "r");
+    if (!file) {        
+        Logger.Log("Failed to open file for reading");
+        return false;
+    }
+
+    JsonDocument doc;
+
+    DeserializationError error = deserializeJson(doc, file);
+    if (error) {
+        Logger.Log("Failed to read file, using default configuration");
+        file.close();
+        return false;
+    }
+
+    Logger.Log("Hardpoints config loaded");
+    
+    Hardpoints.clear();
+    EDGameVariables.FireGroupCount = doc["groupcount"].as<uint8_t>();
+    for (JsonPair kv : doc["hardpoints"].as<JsonObject>()) {
+        uint8_t key = String(kv.key().c_str()).toInt();
+        JsonObject item = kv.value().as<JsonObject>();
+        HardpointItem value;
+        value.fireGroup = item["group"].as<uint8_t>();
+        value.fireWeapon = item["weapon"].as<uint8_t>();
+        value.analysisMode = item["analysis"].as<uint8_t>() == 1 ? true : false;
+        Hardpoints[key] = value;
+    }
+    serializeJson(doc, WebSerial);
+
+    file.close();
+    return true;
+}
+
+void ActionMapperClass::SaveHardpoints() {
+    File file = LittleFS.open("/hardpoints.json", "w");
+    if (!file) {
+        Logger.Log("Failed to open file for writing");
+        return;
+    }
+
+    JsonDocument doc;
+    doc["groupcount"] = EDGameVariables.FireGroupCount;
+    JsonObject hardpoints = doc.createNestedObject("hardpoints");
+    for (const auto& kv : Hardpoints) {
+        JsonObject item = hardpoints.createNestedObject(String(kv.first));
+        item["group"] = kv.second.fireGroup;
+        item["weapon"] = kv.second.fireWeapon;
+        item["analysis"] = kv.second.analysisMode ? 1 : 0;
+    }
+    serializeJson(doc, WebSerial);
+    if (serializeJson(doc, file) == 0) {
+        Logger.Log("Failed to write to file");
+    }
+    
+    file.close();
+}
+
+void ActionMapperClass::LoadDefaultHardpointConfig()
+{
+    Hardpoints.clear();
+    EDGameVariables.FireGroupCount = 3;
+    Hardpoints[SCANNER_DSD] = {1, 1, true};
+}
+
 void ActionMapperClass::SetItemConfig(uint8_t item, ActionMapperItem itemConfig)
 {
     _actionsMap[item] = itemConfig;
@@ -262,6 +335,42 @@ void ActionMapperClass::UpdateRemoteStatus()
 void ActionMapperClass::UpdateLocalStatus(uint8_t item, bool physicalStatus)
 {
     _toggles[item]->localState = physicalStatus ? ActionnerState::Active : ActionnerState::Inactive;
+}
+
+void ActionMapperClass::TriggerHardpoint(uint8_t item)
+{
+    if (Hardpoints.find(item) != Hardpoints.end()) {
+        WebSerial.printf("Hardpoint %d found\n");
+        HardpointItem hardpoint = Hardpoints[item];
+        // switch cockpit mode if necessary
+        if (hardpoint.analysisMode != EDGameVariables.IsHudAnalysisMode())
+        {
+            WebSerial.println("HUD mode mismatch, switching");
+            ActionMapper.SendKey(ActionMapper.GetItemConfig(COCKPIT_MODE).pressedKey, true, 1);
+        } 
+        else 
+        {
+            WebSerial.println("HUD mode looks good");
+        }
+        // Switch to the proper firegroup
+        uint8_t n = 0;
+        if (hardpoint.fireGroup != EDGameVariables.FireGroup) {
+            if (hardpoint.fireGroup > EDGameVariables.FireGroup)
+                n = hardpoint.fireGroup - EDGameVariables.FireGroup;
+            else 
+                n = (EDGameVariables.FireGroupCount - EDGameVariables.FireGroup) + hardpoint.fireGroup;
+            if (n > 0)
+            {
+                WebSerial.printf("firegroup mismatch, current=%d, target=%d, total=%d, sending %d switches\n", EDGameVariables.FireGroup, hardpoint.fireGroup, EDGameVariables.FireGroupCount, n);
+                ActionMapper.SendKey(ActionMapper.GetItemConfig(TARGETING_NEXT_GROUP).pressedKey, true, n);
+                delay(200);
+            }
+        }
+
+        // Trigger hardpoint weapon
+        WebSerial.printf("Firing %s weapon\n", hardpoint.fireWeapon == 1 ? "Primary" : "Secondary");
+        ActionMapper.SendKey(hardpoint.fireWeapon == 1 ? FIRE_WEAPON1 : FIRE_WEAPON2, true, 1);
+    }
 }
 
 void ActionMapperClass::registerToggleActionHandler(std::function<void(uint8_t item, ActionMapperItem* itemConfig, bool pressed, u_int8_t count)> handler)

@@ -18,6 +18,8 @@ private:
     bool _writeWiFiCredentials(const String &ssid, const String &password);
     void _onOTAEnd(bool success);
     void _handleSaveWiFi(AsyncWebServerRequest *request);
+    void _handleSaveHardpoints(AsyncWebServerRequest *request);
+    void _handleDeleteHardpoint(AsyncWebServerRequest *request);
     void _handleClearWiFi(AsyncWebServerRequest *request);
     void _handleRoot(AsyncWebServerRequest *request);
     String _htmlProcessor(const String &var);

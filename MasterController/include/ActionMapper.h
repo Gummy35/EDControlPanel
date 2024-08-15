@@ -48,14 +48,29 @@ public:
     bool isInconsistent();
 };
 
+struct HardpointItem
+{
+    uint8_t fireGroup = 0;
+    uint8_t fireWeapon = 1;
+    uint8_t analysisMode = true;
+    HardpointItem() {}
+    HardpointItem(uint8_t group, uint8_t weapon, bool analysis)
+        : fireGroup(group), fireWeapon(weapon), analysisMode(analysis) {}
+};
+
 class ActionMapperClass
 {
 public:
+    std::map<uint8_t, HardpointItem> Hardpoints;
+
     ActionMapperClass();
     void Init();
-    bool Load();
-    void Save();
+    bool LoadMapping();
+    void SaveMapping();
     void LoadDefaultMap();
+    bool LoadHardpoints();
+    void SaveHardpoints();
+    void LoadDefaultHardpointConfig();
     void SetItemConfig(uint8_t item, ActionMapperItem itemConfig);
     ActionMapperItem GetItemConfig(uint8_t item);
     void TriggerActionItem(uint8_t item, bool pressed, uint8_t count);
@@ -65,6 +80,7 @@ public:
     void UpdateRemoteStatus();
     void SendKey(uint8_t keyCode, bool pressed, u_int8_t count);
     void UpdateLocalStatus(uint8_t item, bool physicalStatus);
+    void TriggerHardpoint(uint8_t item);
 
     void registerToggleActionHandler(std::function<void(uint8_t item, ActionMapperItem *itemConfig, bool pressed, u_int8_t count)> handler);
     void registerGetGameStatusHandler(std::function<ActionnerState(uint8_t item)> handler);

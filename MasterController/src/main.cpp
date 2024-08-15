@@ -65,6 +65,7 @@ RotaryEncoder *encoder1 = new RotaryEncoder(1, 13, 18, 19);
 RotaryEncoder *encoder2 = new RotaryEncoder(2, 32, 33, 34);
 RotaryEncoder *encoder3 = new RotaryEncoder(3, 35, 36, 39);
 
+
 // Action mapper is responsible for mapping keystrikes to events to send to slave MCU.
 // It must also manage conflicts between physical state and game expected state.
 // For example, landing gears are managed by a keystroke in the game, but we use a on/off toggle switch
@@ -117,15 +118,9 @@ void SetupActionMapper()
                                              {
                                                if (item == SCANNER_DSD)
                                                {
+                                                // First check we are not already in DSD mode
                                                  if (!EDGameVariables.IsInDSDMode())
-                                                 {
-                                                   if (!EDGameVariables.IsHudAnalysisMode())
-                                                   {
-                                                     // Switch cockpit mode then fire weapon 1
-                                                     ActionMapper.SendKey(ActionMapper.GetItemConfig(COCKPIT_MODE).pressedKey, true, 1);
-                                                     ActionMapper.SendKey(FIRE_WEAPON1, true, 1);
-                                                   }
-                                                 }
+                                                   ActionMapper.TriggerHardpoint(SCANNER_DSD);
                                                }
                                                else
                                                  ActionMapper.SendKey(itemConfig->pressedKey, true, itemConfig->pressCount);
@@ -178,7 +173,7 @@ void TaskDisplayCode(void *pvParameters)
   for (;;)
   {
     displayManager->Handle();
-    vTaskDelay(100);
+    vTaskDelay(10);
   }
 }
 
@@ -475,6 +470,7 @@ void SetupWebSerialCommands()
                         if (d.equals("help"))
                         {
                           WebSerial.println("keymap.[default|save|load]");
+                          WebSerial.println("hardpoints.[default|save|load]");
                           WebSerial.println("slave.[ping|reset|getupdates|getalldata]");
                           //      WebSerial.println("display.[location|commander|status]");
                           WebSerial.println("test.[leds|i2clarge]");
@@ -486,11 +482,23 @@ void SetupWebSerialCommands()
                         }
                         else if (d.equals("keymap.save"))
                         {
-                          ActionMapper.Save();
+                          ActionMapper.SaveMapping();
                         }
                         else if (d.equals("keymap.load"))
                         {
-                          ActionMapper.Load();
+                          ActionMapper.LoadMapping();
+                        }
+                        else if (d.equals("hardpoints.default"))
+                        {
+                          ActionMapper.LoadDefaultHardpointConfig();
+                        }
+                        else if (d.equals("hardpoints.save"))
+                        {
+                          ActionMapper.SaveHardpoints();
+                        }
+                        else if (d.equals("hardpoints.load"))
+                        {
+                          ActionMapper.LoadHardpoints();
                         }
                         else if (d.equals("reboot"))
                         {
