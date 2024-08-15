@@ -79,7 +79,8 @@ void ActionMapperClass::SaveMapping() {
     JsonDocument doc;
 
     for (const auto& kv : _actionsMap) {
-        JsonObject item = doc.createNestedObject(String(kv.first));
+
+        JsonObject item = doc[kv.first].to<JsonObject>();
         item["t"] = kv.second.type;
         item["p"] = kv.second.pressedKey;
         item["r"] = kv.second.releasedKey;
@@ -220,9 +221,9 @@ void ActionMapperClass::SaveHardpoints() {
 
     JsonDocument doc;
     doc["groupcount"] = EDGameVariables.FireGroupCount;
-    JsonObject hardpoints = doc.createNestedObject("hardpoints");
+    JsonObject hardpoints = doc["hardpoints"].to<JsonObject>();
     for (const auto& kv : Hardpoints) {
-        JsonObject item = hardpoints.createNestedObject(String(kv.first));
+        JsonObject item = hardpoints[String(kv.first)].to<JsonObject>();
         item["group"] = kv.second.fireGroup;
         item["weapon"] = kv.second.fireWeapon;
         item["analysis"] = kv.second.analysisMode ? 1 : 0;
