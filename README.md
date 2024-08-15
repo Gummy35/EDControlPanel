@@ -1,5 +1,7 @@
 # EDControlPanel
 
+![image](EDControlPanel.jpg)
+
 ## Features
 
 * Webserver :
