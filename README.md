@@ -35,12 +35,18 @@
 
 ```mermaid
 flowchart LR;
-    PC <-- (USB) --> SlaveMCU["Slave MCU (Arduino Pro Micro)"];
-    SlaveMCU <-- (I2C) --> MasterMCU["Master MCU (Mini ESP32)"];
-    KeypadController["Keypad Controller (PCF8575)"] -- (I2C) --> MasterMCU;
-    MasterMCU -- (I2C) --> LCDDisplay["LCD Display (HD44780)"];
-    RotaryEncoders["Rotary encoders (KY-040)"] --> MasterMCU;
-    MasterMCU --> LedControllers["LED Controllers (TPIC6B595N Shift registers)"];
+    SlaveMCU["Slave MCU (Ard. Pro Micro)"]
+    MasterMCU["Master MCU (Mini ESP32)"];
+    KeypadController["Keypad Control (PCF8575)"];
+    LCDDisplay["LCD Display (HD44780)"];
+    RotaryEncoders["Rotary encoders (KY-040)"];
+    LedControllers["LED Control (TPIC6B595N)"];
+    PC <-- (USB) --> SlaveMCU;
+    SlaveMCU <-- (I2C) --> MasterMCU;
+    KeypadController -- (I2C) --> MasterMCU;
+    MasterMCU -- (I2C) --> LCDDisplay;
+    RotaryEncoders --> MasterMCU;
+    MasterMCU --> LedControllers;
 ```
 
 ## TODO
