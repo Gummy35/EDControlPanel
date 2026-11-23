@@ -2,6 +2,8 @@
 
 #include <LittleFS.h>
 #include <ESPAsyncWebServer.h>
+#include <AsyncJson.h>
+#include <ArduinoJson.h>
 
 class EDControllerWebServerClass
 {
@@ -17,11 +19,14 @@ private:
     void _connectToWiFi(const String &ssid, const String &password);
     bool _writeWiFiCredentials(const String &ssid, const String &password);
     void _onOTAEnd(bool success);
+    void _handleGetMacros(AsyncWebServerRequest *request);
+    void _handleGetJsonFile(AsyncWebServerRequest *request, const char *filename);
+    void _saveJsonToFile(AsyncWebServerRequest *request, JsonVariant &json, const char *filename);
     void _handleSaveWiFi(AsyncWebServerRequest *request);
     void _handleSaveHardpoints(AsyncWebServerRequest *request);
     void _handleDeleteHardpoint(AsyncWebServerRequest *request);
     void _handleClearWiFi(AsyncWebServerRequest *request);
-    void _handleRoot(AsyncWebServerRequest *request);
+    void _handlePage(AsyncWebServerRequest *request, const char *pagePath = "/html/index.html");
     String _htmlProcessor(const String &var);
 
     String wifi_ssid;

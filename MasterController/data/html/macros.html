@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Programmable Macros</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+    <div class="logo-container">
+        <!-- <img src="logo_50.png" alt="Logo" class="logo"> -->
+        <img src="/static/logo_50.png" alt="Logo" class="logo">
+        <div class="overlay-text">Controller</div>
+    </div>
+    <div class="scanlines">
+        <div class="menu-bar">
+            <div class="menu-item">
+                <a href="/update">Update Firmware</a>
+            </div>
+            <div class="menu-item">
+                <a href="/webserial">Web Serial Console</a>
+            </div>
+            <div class="menu-item">
+                <a href="#">Settings</a>
+                <div class="submenu">
+                    <div class="scanlines crt-colorsep">
+                        <a href="/wifi">Wifi</a>
+                        <a href="/mapping">Keys mapping</a>
+                        <a href="/hardpoints">Hardpoints</a>
+                        <a href="/macros">Macros</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Macros</h2>
+        <div id="macros">
+            <div class="header-row">
+                <div>Macro name</div>
+                <div>Key</div>
+                <div></div>
+            </div>
+            <div id="macros-list"></div>
+            <div class="footer">
+                <div></div>
+                <div class="card-actions">
+                    <button id="new-macro">➕ New macro</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="macro-editor" style="display: none;">
+            <div class="macro-general">
+                <label for="macro-name">Macro name:</label>
+                <input type="text" id="macro-name" placeholder="Macro name">
+            </div>
+            <div class="macro-general">
+                <label for="macro-key">Key:</label>
+                <select id="macro-key"></select>
+            </div>
+            <div class="macro-guardconditions card-group">
+                <h3>Guard conditions</h3>
+                <div class="header-row">
+                    <div>Condition</div>
+                    <div></div>
+                </div>
+                <div id="guardconditions-list"></div>
+                <div class="footer">
+                    <div></div>
+                    <div class="card-actions">
+                        <button id="add-guard">➕ Add</button>
+                    </div>
+                </div>
+            </div>
+            <div class="macro-steps card-group">
+                <h3>Steps</h3>
+                <div class="header-row">
+                    <div>Action</div>
+                    <div></div>
+                </div>
+                <div id="steps-list"></div>
+                <div class="footer">
+                    <div></div>
+                    <div class="card-actions">
+                        <button id="add-step">➕ Add</button>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="footer">
+                <button id="save-macro">💾 Save Macro</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="step-modal" class="modal">
+        <div class="modal-content">
+            <div>
+                <label for="step-type">Step Type :</label>
+                <select id="step-type">
+                    <option value="delay">Delay</option>
+                    <option value="key">Press key</option>
+                    <option value="action">Predefined Action</option>
+                </select>
+            </div>
+            <div id="step-details"></div>
+            <div>
+                <button id="save-step">💾 Save</button>
+                <button id="cancel-step">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="guard-modal" class="modal">
+        <div class="modal-content">
+            <div>
+                <label for="guard-condition">Guard condition :</label>
+                <select id="guard-condition"></select>
+                <input id="guard-inverted" type="checkbox" checked="false">Is false</input>
+            </div>
+            <div>
+                <button id="save-guard">💾 Save</button>
+                <button id="cancel-guard">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="custom-dialog" style="display: none;" class="custom-dialog modal">
+        <div class="modal-content">
+            <p id="label">title</p>
+            <button id="yes-btn">yes</button>
+            <button id="no-btn">no</button>
+            <button id="cancel-btn">cancel</button>
+        </div>
+    </div>
+
+    <script src="/static/Sortable.min.js"></script>
+    <script src="/static/edconst.js"></script>
+    <script>
+        let guardsList = document.getElementById('guardconditions-list')
+        let guardModal = document.getElementById('guard-modal');
+        let stepsList = document.getElementById('steps-list');
+        let macrosList = document.getElementById('macros-list');
+        let stepModal = document.getElementById('step-modal');
+        let stepType = document.getElementById('step-type');
+        let stepDetails = document.getElementById('step-details');
+        let macroEditor = document.getElementById('macro-editor');
+        let keySelect = document.getElementById('macro-key');
+        let customDialog = document.getElementById('custom-dialog');
+        let guardConditionSelect = document.getElementById('guard-condition');
+
+        let macros = [];
+
+        class MacroStep {
+            constructor() { }
+            get description() {
+                return "abstract";
+            }
+        }
+
+        class MacroDelayStep extends MacroStep {
+            duration = 0;
+            static type = "delay";
+            static opcode = 1;
+
+            constructor(duration) {
+                super();
+                this.duration = duration;
+            }
+
+            get description() {
+                return `Delay: ${this.duration} ms`;
+            }
+
+            getOpcodes = () => {
+                return [+MacroDelayStep.opcode, +this.duration];
+            }
+
+            toJSON = () => {
+                return {
+                    type: MacroDelayStep.type,
+                    duration: +this.duration
+                }
+            }
+        }
+
+        class MacroKeyStep extends MacroStep {            
+            keyCode = "";
+            repetitions = 1;
+            static type = "key";
+            static opcode = 2;
+
+            constructor(keyCode, repetitions) {
+                super();
+                this.keyCode = keyCode;
+                this.repetitions = repetitions;
+            }
+
+            get description() {
+                return `Key: ${this.keyCode} x ${this.repetitions}`;
+            }
+
+            getOpcodes = () => {
+                return [+MacroKeyStep.opcode, +this.keyCode, +this.repetitions];
+            }
+
+            toJSON = () => {
+                return {
+                    type: MacroKeyStep.type,
+                    keyCode: +this.keyCode,
+                    repetitions: +this.repetitions
+                }
+            }
+        }
+
+        class MacroActionStep extends MacroStep {
+            static optionsMapping = {
+                ["hud"]:
+                {
+                    text: 'Set hud mode',
+                    opcode: 1,
+                    options:
+                    {
+                        'combat': { text: 'Combat Mode', opcode: 1 },
+                        'analysis': { text: 'Analysis Mode', opcode: 2 }
+                    }
+                },
+                ["panel"]:
+                {
+                    text: 'Focus panel',
+                    opcode: 2,
+                    options:
+                    {
+                        'left': { text: 'Left', opcode: 1 },
+                        'right': { text: 'Right', opcode: 2 },
+                        'center': { text: 'Center', opcode: 3 }
+                    }
+                },
+                ["tab"]: {
+                    text: 'Tab',
+                    opcode: 3,
+                    options:
+                    {
+                        'next': { text: 'Next', opcode: 1 },
+                        'previous': { text: 'Previous', opcode: 2 }
+                    }
+                }
+            };
+            static type = "action";
+            static opcode = 3;
+            action = 0;
+            actionParam = 0;
+
+            constructor(action, actionParam) {
+                super();
+                this.action = action;
+                this.actionParam = actionParam;
+            }
+
+            get description() {
+                return `Action: ${MacroActionStep.optionsMapping[this.action].text} - ${MacroActionStep.optionsMapping[this.action].options[this.actionParam].text}`;
+            }
+
+            getOpcodes = () => {
+                return [
+                    +MacroActionStep.opcode,
+                    +MacroActionStep.optionsMapping[this.action].opcode,
+                    +MacroActionStep.optionsMapping[this.action].options[this.actionParam].opcode
+                ];
+            }
+
+            toJSON = () => {
+                return {
+                    type: MacroActionStep.type,
+                    action: this.action,
+                    actionParam: this.actionParam
+                }
+            }
+        }
+
+        class GuardCondition {
+            condition = "";
+            isFalse = false;
+
+            constructor(condition, isFalse) {
+                this.condition = condition;
+                this.isFalse = isFalse;
+            }
+
+            get description() {
+                let item;
+                // bitwise operations are limited to 32 bits
+                if (this.condition >= 0x800000000)
+                    item = LoadoutFlag2Mapping.find(item => item.key === (this.condition & 0xFFFFFFFF));
+                else if (this.condition >= 0x400000000)
+                    item = LoadoutFlag1Mapping.find(item => item.key === (this.condition & 0xFFFFFFFF));
+                else if (this.condition >= 0x200000000)
+                    item = StatusFlag2Mapping.find(item => item.key === (this.condition & 0xFFFFFFFF));
+                else if (this.condition >= 0x100000000)
+                    item = StatusFlag1Mapping.find(item => item.key === (this.condition & 0xFFFFFFFF));
+
+                return item ? `${item.label} is ${this.isFalse ? "False" : "True"}` : "";
+            }
+
+            updateFlags = (flags) => {
+                let idx;
+                // bitwise operations are limited to 32 bits
+                if (this.condition >= 0x800000000)
+                    idx = 6;
+                else if (this.condition >= 0x400000000)
+                    idx = 4;
+                else if (this.condition >= 0x200000000)
+                    idx = 2;
+                else if (this.condition >= 0x100000000)
+                    idx = 0;
+                if (this.isFalse)
+                    idx++;
+                flags[idx] |= (this.condition & 0xFFFFFFFF);
+            }
+
+            toJSON = () => {
+                return {
+                    condition: this.condition,
+                    isFalse: this.isFalse
+                }
+            }
+        }
+
+        class Macro {
+            name = "";
+            key = "0";
+            guards = new Array();
+            steps = new Array();
+            opcodes = new Array();
+
+            constructor(id) {
+                this.name = "macro #" + id;
+            }
+
+            updateMacroCode = () => {
+                this.opcodes = [];
+                let guardFlags = [0, 0, 0, 0, 0, 0, 0, 0];
+                this.guards.forEach((guard, index) => {
+                    guard.updateFlags(guardFlags);
+                });
+                this.opcodes.push(...guardFlags);
+                this.steps.forEach((step, index) => {
+                    this.opcodes.push(...step.getOpcodes());
+                });
+            }
+
+            clone = () => {
+                return Macro.fromJSON(JSON.parse(JSON.stringify(this)));
+            }
+
+            toJSON = () => {
+                return {
+                    name: this.name,
+                    key: +this.key,
+                    guards: this.guards,
+                    steps: this.steps,
+                    opcodes: this.opcodes
+                };
+            }
+
+            static fromJSON(json) {
+                const macro = new Macro();
+
+                macro.name = json.name;
+                macro.key = json.key;
+                macro.opcodes = json.opcodes;
+
+                const classMap = {
+                    [MacroActionStep.type]: MacroActionStep,
+                    [MacroKeyStep.type]: MacroKeyStep,
+                    [MacroDelayStep.type]: MacroDelayStep
+                };
+
+                json.steps.forEach(stepData => {
+                    const StepClass = classMap[stepData.type];
+                    if (StepClass) {
+                        const step = new StepClass(...Object.values(stepData).slice(1));
+                        macro.steps.push(step);
+                    }
+                });
+
+                json.guards.forEach(guardData => {
+                    macro.guards.push(new GuardCondition(guardData.condition, guardData.isFalse));
+                });
+
+                return macro;
+            }
+        }
+
+        class StepView {
+            currentId = null;
+            currentStep = null;
+
+            constructor() { }
+
+            static renderCard = (step, index) => {
+                const card = document.createElement('div');
+                card.className = 'card';
+
+                card.innerHTML = `
+                    <div class="card-firstcol">${step.description}</div>
+                    <div class="card-actions">
+                        <button class="edit-btn">✏️ Edit</button>
+                        <button class="delete-btn">🗑️ Delete</button>
+                    </div>
+                `;
+                card.querySelector('.edit-btn').addEventListener('click', (event) => {
+                    let baseDiv = event.target.parentNode.parentNode;
+                    let index = Array.from(baseDiv.parentNode.children).indexOf(baseDiv);
+                    StepView.edit(index);
+                });
+                card.querySelector('.delete-btn').addEventListener('click', (event) => {
+                    let baseDiv = event.target.parentNode.parentNode;
+                    let index = Array.from(baseDiv.parentNode.children).indexOf(baseDiv);
+                    MacroView.deleteStep(MacroView.currentMacro, index);
+                });
+                return card;
+            }
+
+            static updateActionParams = () => {
+                const actionSelect = document.getElementById('action');
+                const actionParamSelect = document.getElementById('action-param');
+                const selectedAction = actionSelect.value;
+
+                actionParamSelect.innerHTML = '';
+
+                if (MacroActionStep.optionsMapping[selectedAction]) {
+
+                    for (const key in MacroActionStep.optionsMapping[selectedAction].options) {
+                        const opt = document.createElement('option');
+                        opt.value = key;
+                        opt.text = MacroActionStep.optionsMapping[selectedAction].options[key].text;
+                        actionParamSelect.appendChild(opt);
+                    }
+                }
+            }
+
+            static initEditor = () => {
+                stepDetails.innerHTML = '';
+
+                if (stepType.value == MacroDelayStep.type) {
+                    stepDetails.innerHTML = `
+                        <label for="delay-duration">Duration (ms):</label>
+                        <input type="number" id="delay-duration" placeholder="Duration in milliseconds">
+                    `;
+                } else if (stepType.value == MacroKeyStep.type) {
+                    stepDetails.innerHTML = `
+                        <label for="key-code">Key Code:</label>
+                        <input type="text" id="key-code" placeholded="Key code">see <a href="https://www.arduino.cc/reference/fr/language/functions/usb/keyboard/keyboardmodifiers/" target="_blank">here</a>
+                        <label for="key-repetitions">Repeats:</label>
+                        <input type="number" id="key-repetitions" placeholder="Repeats">
+                    `;
+                } else if (stepType.value == MacroActionStep.type) {
+                    stepDetails.innerHTML = `
+                        <label for="action">Predefined action:</label>
+                        <select id="action"></select>
+                        <select id="action-param"></select>                        
+                    `;
+                    const actionSelect = document.getElementById('action');
+                    for (const key in MacroActionStep.optionsMapping) {
+                        const opt = document.createElement('option');
+                        opt.value = key;
+                        opt.text = MacroActionStep.optionsMapping[key].text;
+                        actionSelect.appendChild(opt);
+                    }
+                    StepView.updateActionParams();
+                    actionSelect.addEventListener('change', StepView.updateActionParams);
+                }
+
+                stepModal.style.display = 'block';
+            }
+
+            static edit = (index) => {
+                StepView.currentStepId = index;
+                const step = MacroView.currentMacro.steps[index];
+
+                stepType.value = step.constructor.type;
+                StepView.initEditor();
+                //updateStepDetails();
+
+                if (step instanceof MacroDelayStep) {
+                    document.getElementById('delay-duration').value = step.duration;
+                } else if (step instanceof MacroKeyStep) {
+                    document.getElementById('key-code').value = step.keyCode;
+                    document.getElementById('key-repetitions').value = step.repetitions;
+                } else if (step instanceof MacroActionStep) {
+                    document.getElementById('action').value = step.action;
+                    StepView.updateActionParams();
+                    document.getElementById('action-param').value = step.actionParam;
+                }
+            }
+
+            static getStepData = () => {
+                const type = stepType.value;
+                switch (type) {
+                    case MacroActionStep.type:
+                        return new MacroActionStep(document.getElementById('action').value, document.getElementById('action-param').value);
+
+                    case MacroKeyStep.type:
+                        return new MacroKeyStep(document.getElementById('key-code').value, document.getElementById('key-repetitions').value);
+
+                    case MacroDelayStep.type:
+                        return new MacroDelayStep(document.getElementById('delay-duration').value);
+                }
+                return null;
+            }
+        }
+
+        class GuardView {
+            currentId = null;
+            currentGuard = null;
+
+            constructor() { }
+
+            static renderCard = (guard, index) => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                        <div class="card-firstcol">${guard.description}</div>
+                        <div class="card-actions">
+                            <button class="guardedit-btn">✏️ Edit</button>
+                            <button class="guarddelete-btn">🗑️ Delete</button>
+                        </div>
+                    `;
+                card.querySelector('.guardedit-btn').addEventListener('click', (event) => {
+                    let baseDiv = event.target.parentNode.parentNode;
+                    let index = Array.from(baseDiv.parentNode.children).indexOf(baseDiv);
+                    GuardView.edit(index);
+                });
+                card.querySelector('.guarddelete-btn').addEventListener('click', (event) => {
+                    let baseDiv = event.target.parentNode.parentNode;
+                    let index = Array.from(baseDiv.parentNode.children).indexOf(baseDiv);
+                    MacroView.deleteGuard(MacroView.currentMacro, index);
+                });
+                return card;
+            }
+
+            static initEditor = (guard) => {
+                document.getElementById('guard-condition').value = guard.condition;
+                document.getElementById('guard-inverted').checked = guard.isFalse;
+                guardModal.style.display = 'block';
+            }
+
+            static edit = (index) => {
+                GuardView.currentGuardId = index;
+                const guard = MacroView.currentMacro.guards[index];
+                GuardView.initEditor(guard);
+            }
+
+            static getGuardData = () => {
+                return new GuardCondition(document.getElementById('guard-condition').value, document.getElementById('guard-inverted').checked);
+            }
+        }
+
+        class MacroView {
+            currentId = null;
+            currentMacro = null;
+
+            constructor() { }
+
+            static renderCard = (macro) => {
+                const card = document.createElement('div');
+                card.className = 'card';
+
+                let selectedOption = keySelect.querySelector(`option[value="${macro.key}"]`);
+                let label = selectedOption.textContent || selectedOption.innerText;
+
+                card.innerHTML = `
+                    <div class="card-firstcol">${macro.name}</div>
+                    <div>${label}</div>
+                    <div class="card-actions">
+                        <button class="edit-btn">✏️ Edit</button>
+                        <button class="delete-btn">🗑️ Delete</button>
+                    </div>
+                `;
+                card.querySelector('.edit-btn').addEventListener('click', (event) => {
+                    let baseDiv = event.target.parentNode.parentNode;
+                    let index = Array.from(baseDiv.parentNode.children).indexOf(baseDiv);
+                    if (MacroView.currentMacroId != index) {
+                        if ((MacroView.currentMacroId != null) && MacroView.hasChanges()) {
+                            showCustomDialog("Current macro has changes", "Save changes", "Abort changes", "Cancel").then((result) => {
+                                if (result === 'yes') {
+                                    MacroView.saveCurrentMacro();
+                                } else if (result === 'no') {
+                                } else {
+                                    return;
+                                }
+                                MacroView.editMacro(index);
+                            });
+                        }
+                        else {
+                            MacroView.editMacro(index);
+                        }
+                    }
+                });
+
+                card.querySelector('.delete-btn').addEventListener('click', (event) => {
+                    let baseDiv = event.target.parentNode.parentNode;
+                    let index = Array.from(baseDiv.parentNode.children).indexOf(baseDiv);
+                    MacroView.deleteMacro(index);
+                });
+                return card;
+            }
+
+            static hasChanges = () => {
+                if (MacroView.currentMacroId === null) return true;
+                let tmpMacro = MacroView.currentMacro.clone();
+                MacroView.updateMacro(tmpMacro);
+                return JSON.stringify(tmpMacro) != JSON.stringify(macros[MacroView.currentMacroId]);
+            }
+
+            static renderAllMacros = () => {
+                macrosList.innerHTML = '';
+                macros.forEach((macro, index) => {
+                    macrosList.appendChild(MacroView.renderCard(macro, index));
+                });
+            }
+
+            static renderSteps = (macro) => {
+                stepsList.innerHTML = '';
+                macro.steps.forEach((step, index) => {
+                    stepsList.appendChild(StepView.renderCard(step, index));
+                });
+            }
+
+            static deleteStep = (macro, index) => {
+                macro.steps.splice(index, 1);
+                MacroView.renderSteps(macro);
+            }
+
+            static deleteGuard = (macro, index) => {
+                macro.guards.splice(index, 1);
+                MacroView.renderGuards(macro);
+            }
+
+            static renderGuards = (macro) => {
+                guardsList.innerHTML = '';
+                macro.guards.forEach((guard, index) => {
+                    guardsList.appendChild(GuardView.renderCard(guard, index));
+                });
+            }
+
+            static renderMacro = (macro) => {
+                document.getElementById('macro-name').value = macro.name;
+                document.getElementById('macro-key').value = macro.key;
+                MacroView.renderGuards(macro);
+                MacroView.renderSteps(macro);
+                macroEditor.style.display = 'block';
+            }
+
+            static editMacro = (index) => {
+                if (index === null) {
+                    let id = macros.length;
+                    macros[id] = new Macro(id);
+                    MacroView.updateMacro(macros[id]);
+                    MacroView.renderAllMacros();
+                    MacroView.editMacro(id);
+                } else {
+                    MacroView.currentMacro = macros[index].clone();
+                    // document.getElementById('macro-name').value = macro.name;
+                    // document.getElementById('macro-key').value = macro.key;
+                    // macroGuards = JSON.parse(JSON.stringify(macro.guards));
+                    // macroSteps = JSON.parse(JSON.stringify(macro.steps));
+                    MacroView.renderMacro(MacroView.currentMacro);
+                    MacroView.currentMacroId = index;
+                }
+            }
+
+            static clearEditor = () => {
+                MacroView.currentMacroId = null;
+                document.getElementById('macro-name').value = "";
+                document.getElementById('macro-key').value = "";
+                macroEditor.style.display = 'none';
+            }
+
+            static deleteMacro = (index) => {
+                if (confirm("Delete macro ??")) {
+                    macros.splice(index, 1);
+                    if (MacroView.currentMacroId == index) {
+                        MacroView.clearEditor();
+                    } else if (MacroView.currentMacroId > index) {
+                        MacroView.currentMacroId--;
+                    }
+                }
+                MacroView.renderAllMacros();
+            }
+
+            static saveCurrentMacro = () => {
+                if (MacroView.currentMacroId === null)
+                    MacroView.currentMacroId = macros.length;
+                MacroView.updateMacro(MacroView.currentMacro);
+                macros[MacroView.currentMacroId] = MacroView.currentMacro.clone();
+                MacroView.renderAllMacros();
+                MacroView.saveMacros();
+            }
+
+            static updateMacro = (targetMacro) => {
+                targetMacro.name = document.getElementById('macro-name').value;
+                targetMacro.key = document.getElementById('macro-key').value;
+                targetMacro.updateMacroCode();
+            }
+
+            static newMacro = () => {
+                if ((MacroView.currentMacroId != null) && MacroView.hasChanges()) {
+                    showCustomDialog("Current macro has changes", "Save changes", "Abort changes", "Cancel").then((result) => {
+                        if (result === 'yes') {
+                            MacroView.saveCurrentMacro();
+                        } else if (result === 'no') {
+                        } else {
+                            return;
+                        }
+                        MacroView.editMacro(null);
+                    });
+                }
+                else {
+                    MacroView.editMacro(null);
+                }
+            }
+
+            static loadMacros = async () =>
+                fetch('/getmacros')
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok ' + response.statusText);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        macros = [];
+                        data.forEach(macroData => macros.push(Macro.fromJSON(macroData)));
+                        console.log("Loaded macros:", macros);
+                        MacroView.renderAllMacros();                        
+                    })
+                    .catch(error => {
+                        macros = [];
+                        console.error('Error while fetching macros:', error);
+                    });
+
+
+            static saveMacros = () =>
+                fetch('/savemacros', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(macros)
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Erreur while saving macros: ' + response.statusText);
+                        }
+                        return response.text();
+                    })
+                    .then(data => {
+                        console.log('server response:', data);
+                    })
+                    .catch(error => {
+                        console.error('Unexpected error:', error);
+                    });
+        }
+
+        showCustomDialog = function (titleLabel, yesLabel, noLabel, cancelLabel) {
+            return new Promise((resolve) => {
+                customDialog.querySelector('#label').innerHTML = titleLabel;
+
+                let btn = customDialog.querySelector('#yes-btn');
+                btn.innerHTML = yesLabel;
+                btn.onclick = () => {
+                    resolve('yes');
+                    customDialog.style.display = 'none';
+                };
+
+                btn = customDialog.querySelector('#no-btn');
+                btn.innerHTML = noLabel;
+                btn.onclick = () => {
+                    resolve('no');
+                    customDialog.style.display = 'none';
+                };
+
+                btn = customDialog.querySelector('#cancel-btn');
+                btn.innerHTML = cancelLabel;
+                btn.onclick = () => {
+                    resolve('cancel');
+                    customDialog.style.display = 'none';
+                };
+
+                customDialog.style.display = 'block';
+
+            });
+        };
+
+        document.addEventListener('DOMContentLoaded', function () {
+
+            document.getElementById('add-step').addEventListener('click', function () {
+                StepView.currentStepId = null;
+                StepView.currentStep = new MacroKeyStep();
+                StepView.initEditor(StepView.currentStep);
+            });
+
+            stepType.addEventListener('change', StepView.initEditor);
+
+            document.getElementById('save-step').addEventListener('click', function () {
+                StepView.currentStep = StepView.getStepData();
+                if (StepView.currentStepId === null) {
+                    MacroView.currentMacro.steps.push(StepView.currentStep);
+                } else {
+                    MacroView.currentMacro.steps[StepView.currentStepId] = StepView.currentStep;
+                }
+
+                MacroView.renderSteps(MacroView.currentMacro);
+                stepModal.style.display = 'none';
+            });
+
+            document.getElementById('cancel-step').addEventListener('click', function () {
+                stepModal.style.display = 'none';
+            });
+
+
+            document.getElementById('add-guard').addEventListener('click', function () {
+                GuardView.currentGuardId = null;
+                GuardView.currentGuard = new GuardCondition();
+                GuardView.initEditor(GuardView.currentGuard);
+
+            });
+
+            document.getElementById('save-guard').addEventListener('click', function () {
+                GuardView.currentGuard = GuardView.getGuardData();
+                if (GuardView.currentGuardId === null) {
+                    MacroView.currentMacro.guards.push(GuardView.currentGuard);
+                } else {
+                    MacroView.currentMacro.guards[GuardView.currentGuardId] = GuardView.currentGuard;
+                }
+
+                MacroView.renderGuards(MacroView.currentMacro);
+                guardModal.style.display = 'none';
+            });
+
+            document.getElementById('cancel-guard').addEventListener('click', function () {
+                guardModal.style.display = 'none';
+            });
+
+
+            document.getElementById('save-macro').addEventListener('click', function () {
+                MacroView.saveCurrentMacro();
+            });
+
+            document.getElementById('new-macro').addEventListener('click', function () {
+                MacroView.newMacro();
+            });
+
+
+            let sortable = new Sortable(stepsList, {
+                animation: 150,
+                onEnd: function (evt) {
+                    const [movedItem] = MacroView.currentMacro.steps.splice(evt.oldIndex, 1);
+                    MacroView.currentMacro.steps.splice(evt.newIndex, 0, movedItem);
+                }
+            });
+
+            keyMapping.forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item.key;
+                opt.text = item.label;
+                keySelect.appendChild(opt);
+            });
+
+            StatusFlag1Mapping.forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item.key + 0x100000000;
+                opt.text = item.label;
+                guardConditionSelect.appendChild(opt);
+            });
+            StatusFlag2Mapping.forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item.key + 0x200000000;
+                opt.text = item.label;
+                guardConditionSelect.appendChild(opt);
+            });
+            LoadoutFlag1Mapping.forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item.key + 0x400000000;
+                opt.text = item.label;
+                guardConditionSelect.appendChild(opt);
+            });
+            LoadoutFlag2Mapping.forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item.key + 0x800000000;
+                opt.text = item.label;
+                guardConditionSelect.appendChild(opt);
+            });
+
+            MacroView.loadMacros();
+        });
+    </script>
+</body>
+
+</html>

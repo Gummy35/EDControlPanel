@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Controller buttons mapping</title>
+    <link rel="stylesheet" href="/static/style.css" />
+    <link rel="stylesheet" href="/static/mapping.css" />
+</head>
+
+<body>
+    <div class="logo-container">
+        <img src="/static/logo_50.png" alt="Logo" class="logo">
+        <div class="overlay-text">Buttons mapping</div>
+    </div>
+    <div class="scanlines">
+        <div class="menu-bar">
+            <div class="menu-item">
+                <a href="/update">Update Firmware</a>
+            </div>
+            <div class="menu-item">
+                <a href="/webserial">Web Serial Console</a>
+            </div>
+            <div class="menu-item">
+                <a href="#">Settings</a>
+                <div class="submenu">
+                    <div class="scanlines crt-colorsep">
+                        <a href="/wifi">Wifi</a>
+                        <a href="/mapping">Keys mapping</a>
+                        <a href="/hardpoints">Hardpoints</a>
+                        <a href="/macros">Macros</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="equipment-container">
+        <img src="/static/panel.jpg" alt="equipement" />
+        
+        <div class="key key-red" data-name="SRV_1"></div>
+        <div class="key key-green" data-name="SRV_2"></div>
+        <div class="key key-blue" data-name="SRV_3"></div>
+        <div class="key key-green" data-name="SRV_4"></div>
+
+        <div class="key switch" data-name="SHIP_SILENT_RUNNING"></div>
+        <div class="key switch" data-name="SHIP_JETTISON_CARGO"></div>
+        <div class="key switch" data-name="SHIP_EMERGENCY_STOP"></div>
+        <div class="key switch" data-name="SHIP_CARGO_SCOOP"></div>
+        <div class="key switch" data-name="SHIP_LIGHTS"></div>
+        <div class="key switch" data-name="SHIP_HARDPOINTS"></div>
+        <div class="key switch" data-name="SHIP_LANDING_GEARS"></div>
+        <div class="key switch" data-name="SHIP_FLIGHT_ASSIST"></div>
+
+        <div class="key key-blue" data-name="FIGHTER_DEFEND"></div>
+        <div class="key key-red" data-name="FIGHTER_ATTACK"></div>
+        <div class="key key-green" data-name="FIGHTER_HOLDPOS"></div>
+        <div class="key key-green" data-name="FIGHTER_HOLDFIRE"></div>
+        <div class="key key-green" data-name="FIGHTER_FOLLOW"></div>
+        <div class="key key-green" data-name="FIGHTER_DOCK"></div>
+        <div class="key key-red" data-name="FIGHTER_FIREATWILL"></div>
+
+        <div class="key key-blue" data-name="STARNAV_GALAXY_MAP"></div>
+        <div class="key key-blue" data-name="STARNAV_SYSTEM_MAP"></div>
+        <div class="key key-blue" data-name="STARNAV_NEXT_SYSTEM"></div>
+
+        <div class="key key-blue" data-name="COCKPIT_MODE"></div>
+        <div class="key key-blue" data-name="SCANNER_PREVIOUS_FILTER"></div>
+        <div class="key key-blue" data-name="SCANNER_NEXT_FILTER"></div>
+        <div class="key switch" data-name="SCANNER_DSD"></div>
+        <div class="key switch" data-name="SCANNER_ACS"></div>
+        <div class="key knob" data-name="SCANNER_ZOOM"></div>
+        <div class="key knob" data-name="SCANNER_FREQ"></div>
+
+        <div class="key key-red" data-name="TARGETING_MOST_HOSTILE"></div>
+        <div class="key key-red" data-name="TARGETING_MAIN_THREAT"></div>
+        <div class="key key-red" data-name="TARGETING_PREVIOUS_THREAT"></div>
+        <div class="key key-red" data-name="TARGETING_NEXT_THREAT"></div>
+        <div class="key key-red" data-name="TARGETING_NEXT_TARGET"></div>
+        <div class="key key-red" data-name="TARGETING_NEXT_SUBSYS"></div>
+        <div class="key key-red" data-name="TARGETING_NEXT_GROUP"></div>
+        <div class="key knob" data-name="TARGETING_SENSORS"></div>
+
+        <div class="key key-blue" data-name="WING_1"></div>
+        <div class="key key-red" data-name="WING_TARGET"></div>
+        <div class="key key-blue" data-name="WING_2"></div>
+        <div class="key key-blue" data-name="WING_3"></div>
+        <div class="key key-green" data-name="WING_NAVLOCK"></div>
+
+        <div class="key key-orange" data-name="DEFENSE_SHIELD_CELL"></div>
+        <div class="key key-orange" data-name="DEFENSE_HEAT_SINK"></div>
+        <div class="key key-orange" data-name="DEFENSE_CHAFF"></div>
+        <div class="key key-orange" data-name="DEFENSE_ECM"></div>
+
+        <div class="key key-white" data-name="ENERGY_SYSTEMS"></div>
+        <div class="key key-white" data-name="ENERGY_ENGINE"></div>
+        <div class="key key-white" data-name="ENERGY_WEAPONS"></div>
+        <div class="key key-white" data-name="ENERGY_BALANCE"></div>
+
+        <div class="key circlekey" data-name="ENGINE_CRUISE"></div>
+        <div class="key circlekey" data-name="ENGINE_JUMP"></div>
+        <div class="key key-green" data-name="ENGINE_DISENGAGE"></div>
+        <div class="key key-green" data-name="ENGINE_FULL_STOP"></div>
+    </div>
+
+    <div class="config-panel" id="configPanel" style="display: none">
+        <div id="keyname" class="config-item"></div>
+        <div id="buttonConfig" class="config-item" style="display: none">
+            <label for="keypress">On press :</label>
+            <select id="keypress">
+                <option value="0">---</option>
+            </select>
+            <label for="keyrelease">On release :</label>
+            <select id="keyrelease"></select>
+            <label for="repeats">Repeats :</label>
+            <input type="number" id="repeats" value="1" min="0" style="width: 50px;" />
+        </div>
+
+        <div id="knobConfig" class="config-item" style="display: none">
+            <label for="knobleft">On left :</label>
+            <select id="knobleft"></select>
+            <label for="knobright">On right :</label>
+            <select id="knobright"></select>
+            <label for="knobclick">On click :</label>
+            <select id="knobclick"></select>
+        </div>
+
+        <div class="config-item">
+            <span id="behavior"></span>
+        </div>
+
+        <div class="config-item">
+            <button id="saveBtn">Save</button>
+            <button id="loadDefaultsBtn">Load Defaults</button>
+        </div>
+    </div>
+
+    <div id="custom-dialog" style="display: none;" class="custom-dialog modal">
+        <div class="modal-content">
+            <p id="label">title</p>
+            <button id="yes-btn">yes</button>
+            <button id="no-btn">no</button>
+            <button id="cancel-btn">cancel</button>
+        </div>
+    </div>
+
+    <script src="/static/edconst.js"></script>
+    <script>
+        let keyname = document.getElementById('keyname');
+        let keypress = document.getElementById('keypress');
+        let keyrelease = document.getElementById('keyrelease');
+        let knobleft = document.getElementById('knobleft');
+        let knobright = document.getElementById('knobright');
+        let knobclick = document.getElementById('knobclick');
+        let repeats = document.getElementById('repeats');
+        let behavior = document.getElementById('behavior');
+        let customDialog = document.getElementById('custom-dialog');
+
+        scanCodes.forEach(item => {
+            const opt = document.createElement('option');
+            opt.value = item.key;
+            opt.text = item.label;
+            keypress.appendChild(opt);
+        });
+
+        keyrelease.innerHTML = keypress.innerHTML;
+        knobleft.innerHTML = keypress.innerHTML;
+        knobright.innerHTML = keypress.innerHTML;
+        knobclick.innerHTML = keypress.innerHTML;
+
+        const keys = document.querySelectorAll('.key');
+        const configPanel = document.getElementById('configPanel');
+        const buttonConfig = document.getElementById('buttonConfig');
+        const knobConfig = document.getElementById('knobConfig');
+        let selectedKey = null;
+
+        let mapping = {};
+
+        showCustomDialog = function (titleLabel, yesLabel, noLabel, cancelLabel) {
+            return new Promise((resolve) => {
+                customDialog.querySelector('#label').innerHTML = titleLabel;
+
+                let btn = customDialog.querySelector('#yes-btn');
+                btn.innerHTML = yesLabel;
+                btn.onclick = () => {
+                    resolve('yes');
+                    customDialog.style.display = 'none';
+                };
+
+                btn = customDialog.querySelector('#no-btn');
+                btn.style.display = (noLabel == null) ? 'none' : '';                   
+                btn.innerHTML = noLabel;
+                btn.onclick = () => {
+                    resolve('no');
+                    customDialog.style.display = 'none';
+                };
+
+                btn = customDialog.querySelector('#cancel-btn');
+                btn.style.display = (cancelLabel == null) ? 'none' : '';                   
+                btn.innerHTML = cancelLabel;
+                btn.onclick = () => {
+                    resolve('cancel');
+                    customDialog.style.display = 'none';
+                };
+
+                customDialog.style.display = 'block';
+
+            });
+        };
+
+
+        const updateBehavior = () => {
+            if (repeats.value == 0) {
+                behavior.innerHTML = 'Will send "On press" on key press, and "On release" on key release. Do NOT specify different keys here unless you know EXACTLY what you\'re doing.';
+            } else {
+                behavior.innerHTML = 'Will send "On press" on key press, wait 50ms, then release the key.';
+                if (repeats.value > 1)
+                    behavior.innerHTML += "Will repeat the cycle " + repeats.count + " times, with a 50ms delay.";
+                behavior.innerHTML += ' Will send "On release" on key release.'
+            }
+        };
+
+        keys.forEach(key => {
+            if (key.classList.contains('knob')) {
+                let keyConf = keyMapping.find(item => item.label == (key.dataset.name + '_LEFT'));
+                if (keyConf) {
+                    key.dataset.key = keyConf.key;
+                    mapping[+keyConf.key] = { type: typeDiscrete, keyCode: 0, keyRepeat: 1, keyRelease: 0, state: stateInactive }; // _LEFT
+                    mapping[+keyConf.key + 1] = { type: typeDiscrete, keyCode: 0, keyRepeat: 1, keyRelease: 0, state: stateInactive }; // _RIGHT
+                    mapping[+keyConf.key + 2] = { type: typeButton, keyCode: 0, keyRepeat: 1, keyRelease: 0, state: stateInactive }; // _CLICK
+                }
+            } else {
+                let keyConf = keyMapping.find(item => item.label == key.dataset.name);
+                if (keyConf) {
+                    key.dataset.key = keyConf.key;
+                    mapping[keyConf.key] = {
+                        type: (key.classList.contains('switch') ? typeToggle : typeButton),
+                        keyCode: 0,
+                        keyRepeat: 1,
+                        keyRelease: 0,
+                        state: (key.classList.contains('switch') ? stateInit : stateInactive)
+                    };
+                }
+            }
+
+            key.addEventListener('click', () => {
+                if (selectedKey) {
+                    selectedKey.classList.remove('selected');
+                }
+                selectedKey = key;
+                selectedKey.classList.add('selected');
+                keyname.innerHTML = selectedKey.dataset.name;
+                configPanel.style.display = "block";
+                if (key.classList.contains('knob')) {
+                    behavior.innerHTML = "";
+                    knobConfig.style.display = "inline-flex";
+                    buttonConfig.style.display = "none";
+                    knobleft.value = mapping[selectedKey.dataset.key].keyCode;
+                    knobright.value = mapping[+selectedKey.dataset.key + 1].keyCode;
+                    knobclick.value = mapping[+selectedKey.dataset.key + 2].keyCode;
+                } else {
+                    knobConfig.style.display = "none";
+                    buttonConfig.style.display = "inline-flex";
+                    keypress.value = mapping[selectedKey.dataset.key].keyCode;
+                    keyrelease.value = mapping[selectedKey.dataset.key].keyRelease;
+                    repeats.value = mapping[selectedKey.dataset.key].keyRepeat;
+                    updateBehavior();
+                }
+            });
+        });
+
+        keypress.addEventListener('change', () => {
+            if (selectedKey) {
+                mapping[selectedKey.dataset.key].keyCode = keypress.value;
+            }
+        });
+
+        keyrelease.addEventListener('change', () => {
+            if (selectedKey) {
+                mapping[selectedKey.dataset.key].keyRelease = keyrelease.value;
+            }
+        });
+
+        repeats.addEventListener('change', () => {
+            if (selectedKey) {
+                mapping[selectedKey.dataset.key].keyRepeat = repeats.value;
+                updateBehavior();
+            }
+        });
+
+        knobleft.addEventListener('change', () => {
+            if (selectedKey) {
+                mapping[selectedKey.dataset.key].keyCode = knobleft.value;
+            }
+        });
+
+        knobright.addEventListener('change', () => {
+            if (selectedKey) {
+                mapping[+selectedKey.dataset.key + 1].keyCode = knobright.value;
+            }
+        });
+
+        knobclick.addEventListener('change', () => {
+            if (selectedKey) {
+                mapping[+selectedKey.dataset.key + 2].keyCode = knobclick.value;
+            }
+        });
+
+        const save = () => {
+            let data = {mapping: {}};
+            Object.entries(mapping).forEach(([key, value]) => {
+                data.mapping[key] = { t: +value.type, p: +value.keyCode, r: +value.keyRelease, c: +value.keyRepeat, s: +value.state };
+            });
+            console.debug(JSON.stringify(data));
+
+            fetch('/savemapping', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erreur while saving mapping: ' + response.statusText);
+                    }
+                    return response.text();
+                })
+                .then(data => {
+                    console.log('server response:', data);
+                })
+                .catch(error => {
+                    console.error('Unexpected error:', error);
+                });
+        };
+
+        const loadData = (data) => {
+            //let data = JSON.parse(json);
+            mapping = {};
+            Object.entries(data.mapping).forEach(([key, value]) => {
+                mapping[key] = {
+                    type: +value.t,
+                    keyCode: +value.p,
+                    keyRelease: +value.r,
+                    keyRepeat: +value.c,
+                    state: +value.s
+                };
+            });
+        };
+
+        const loadDefaults = async () => {
+            fetch('/getdefaultmapping')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    loadData(data);
+                    console.log("Loaded default mapping");
+                })
+                .catch(error => {
+                    macros = [];
+                    console.error('Error while fetching default mapping:', error);
+                });
+        };
+
+        const load = async () => {
+            fetch('/getmapping')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    loadData(data);
+                    console.log("Loaded mapping");
+                })
+                .catch(error => {
+                    macros = [];
+                    console.error('Error while fetching mapping:', error);
+                });
+        };
+
+        document.getElementById('saveBtn').addEventListener('click', () => {
+            showCustomDialog("Update device configuration ?", "Save changes", null, "Cancel").then((result) => {
+                if (result === 'yes') {
+                    save;
+                } else {
+                    return;
+                }
+            });
+        });
+
+        document.getElementById('loadDefaultsBtn').addEventListener('click', () => {
+            showCustomDialog("Load default configuration ?", "Load defaults", null, "Cancel").then((result) => {
+                if (result === 'yes') {
+                    loadDefaults();
+                } else {
+                    return;
+                }
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', function () {
+            load();
+        });
+    </script>
+
+    <!-- <script>
+        document.getElementById('background-container').addEventListener('click', function (event) {
+            // Obtient les dimensions du conteneur
+            const container = event.currentTarget;
+            const containerWidth = container.offsetWidth;
+            const containerHeight = container.offsetHeight;
+
+            // Obtient les coordonnées du clic par rapport au conteneur
+            const clickX = event.clientX - container.getBoundingClientRect().left;
+            const clickY = event.clientY - container.getBoundingClientRect().top;
+
+            // Calcule les pourcentages
+            const xPercent = (clickX / containerWidth) * 100;
+            const yPercent = (clickY / containerHeight) * 100;
+
+            // Affiche les pourcentages
+            document.getElementById('coordinates').textContent = `X: ${xPercent.toFixed(2)}%, Y: ${yPercent.toFixed(2)}%`;
+        });
+    </script>
+    <div id="coordinates">Cliquez sur l'image</div> -->
+</body>
+
+</html>

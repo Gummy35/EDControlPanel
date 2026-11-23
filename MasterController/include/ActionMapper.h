@@ -2,10 +2,30 @@
 #include <Arduino.h>
 #include <map>
 #include <vector>
+#include <memory>
 #include <PanelActions.h>
+#include <ArduinoJson.h>
+#include <Macro.h>
+
+
+#define MACROS_CONFIG_FILE "/macros.json"
+#define MAPPING_CONFIG_FILE "/mapping.json"
+#define MAPPING_DEFAULT_CONFIG_FILE "/defaultmapping.json"
+
 
 #define FIRE_WEAPON1 0xE8
 #define FIRE_WEAPON2 0xE9
+
+
+// Need key defs
+
+// #define GUI_FOCUS_CENTER 0x00
+// #define GUI_FOCUS_INTERNAL 0x00
+// #define GUI_FOCUS_EXTERNAL 0x00
+
+// #define GUI_PANEL_NEXT 0x00
+// #define GUI_PANEL_PREVIOUS 0x00
+
 
 enum ActionnerType : uint8_t
 {
@@ -58,18 +78,22 @@ struct HardpointItem
         : fireGroup(group), fireWeapon(weapon), analysisMode(analysis) {}
 };
 
+
 class ActionMapperClass
 {
 public:
     std::map<uint8_t, HardpointItem> Hardpoints;
+    std::map<uint8_t, std::vector<Macro*>*> Macros;
 
     ActionMapperClass();
     void Init();
     bool LoadMapping();
-    void SaveMapping();
+    void SaveMapping(const char *path);
     void LoadDefaultMap();
     bool LoadHardpoints();
+    void ExplainMacros();
     void SaveHardpoints();
+    bool LoadMacros();
     void LoadDefaultHardpointConfig();
     void SetItemConfig(uint8_t item, ActionMapperItem itemConfig);
     ActionMapperItem GetItemConfig(uint8_t item);

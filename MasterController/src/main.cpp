@@ -10,7 +10,7 @@
 #include <LedController.h>
 #include <LittleFS.h>
 #include <EDControllerWebServer.h>
-#include <WebSerial.h>
+#include <ThreadSafeWebSerial.h>
 #include <LedController.h>
 #include <Logger.h>
 #include <RotaryEncoder.h>
@@ -21,7 +21,7 @@
 #define DEBUG
 
 #ifdef DEBUG
-#define debug(MyCode) MyCode;
+#define debug(MyCode) MyCode
 #else
 #endif
 
@@ -65,7 +65,6 @@ RotaryEncoder *encoder1 = new RotaryEncoder(1, 13, 18, 19);
 RotaryEncoder *encoder2 = new RotaryEncoder(2, 32, 33, 34);
 RotaryEncoder *encoder3 = new RotaryEncoder(3, 35, 36, 39);
 
-
 // Action mapper is responsible for mapping keystrikes to events to send to slave MCU.
 // It must also manage conflicts between physical state and game expected state.
 // For example, landing gears are managed by a keystroke in the game, but we use a on/off toggle switch
@@ -82,8 +81,8 @@ void SetupActionMapper()
                                         event.count = count;
                                         event.pressed = pressed;
                                         event.key = keyCode;
-                                        debug(Serial.printf("sending key %d\n", keyCode))
-                                            EDIpcProtocol->sendKey(event); });
+                                        debug(Serial.printf("sending key %d\n", keyCode));
+                                        EDIpcProtocol->sendKey(event); });
 
   // this handler is called by action mapper when it needs to know the physical state of a toggle switch
   // return the expected toggle state based on game provided data
@@ -128,8 +127,7 @@ void SetupActionMapper()
                                              else
                                              {
                                                ActionMapper.SendKey(itemConfig->releasedKey, true, itemConfig->pressCount);
-                                             }
-                                           });
+                                             } });
 }
 
 /// @brief this method is used to update action mapper toggle buttons state, without waiting for an action on it
@@ -153,15 +151,15 @@ void keypadEvent(uint8_t pressed[], uint8_t released[], uint8_t pressCount, uint
   for (int i = 0; i < pressCount; i++)
   {
     c = keyController->Keypad->keymap[pressed[i]];
-    debug(WebSerial.printf("Pressed %d\n", c))
-        ActionMapper.TriggerActionItem(c, true, 1);
+    debug(TSWebSerial.printf("Pressed %d\n", c));
+    ActionMapper.TriggerActionItem(c, true, 1);
   }
 
   for (int i = 0; i < releaseCount; i++)
   {
     c = keyController->Keypad->keymap[released[i]];
-    debug(WebSerial.printf("Released %d\n", c))
-        ActionMapper.TriggerActionItem(c, false, 1);
+    debug(TSWebSerial.printf("Released %d\n", c));
+    ActionMapper.TriggerActionItem(c, false, 1);
   }
 }
 
@@ -240,9 +238,9 @@ void TaskKeypadCode(void *pvParameters)
           strcpy(displayManager->ErrorPage->lines[1], s.c_str());
           strcpy(displayManager->ErrorPage->lines[2], s2.c_str());
 
-          debug(Serial.println(displayManager->ErrorPage->lines[0]))
-              debug(Serial.println(displayManager->ErrorPage->lines[1]))
-                  debug(Serial.println(displayManager->ErrorPage->lines[2]))
+          debug(Serial.println(displayManager->ErrorPage->lines[0]));
+          debug(Serial.println(displayManager->ErrorPage->lines[1]));
+          debug(Serial.println(displayManager->ErrorPage->lines[2]));
         }
         // force refresh
         displayManager->Invalidate();
@@ -283,8 +281,8 @@ void TaskCommsCode(void *pvParameters)
     // if status flags changed, update toggles remote status
     if (changes & (uint32_t)UPDATE_CATEGORY::UC_STATUS)
     {
-      debug(Serial.println("New remote status received, updating toggles"))
-          ActionMapper.UpdateRemoteStatus();
+      debug(Serial.println("New remote status received, updating toggles"));
+      ActionMapper.UpdateRemoteStatus();
       displayManager->Lock();
       if (EDGameVariables.IsFsdJump())
       {
@@ -309,11 +307,11 @@ void TaskCommsCode(void *pvParameters)
 void onRotaryClick(RotaryEncoder *sender, int senderId)
 {
   if (senderId == 1)
-    ActionMapper.TriggerActionItem(SCANNER_FREQ_TARGET, true, 1);
+    ActionMapper.TriggerActionItem(SCANNER_FREQ_CLICK, true, 1);
   else if (senderId == 2)
     ActionMapper.TriggerActionItem(SCANNER_ZOOM_CLICK, true, 1);
-  // else if (senderId == 3)
-  //   ActionMapper.TriggerActionItem(TARGETING_SENSORS_CLICK, true, 1);
+  else if (senderId == 3)
+    ActionMapper.TriggerActionItem(TARGETING_SENSORS_CLICK, true, 1);
 }
 
 void onRotaryLeft(RotaryEncoder *sender, int senderId, int delta)
@@ -374,7 +372,7 @@ void InitDevices()
   Logger.SetLogger([](const char *logString)
                    {
                      display->LogDisplay(logString);
-                     WebSerial.println(logString); });
+                     TSWebSerial.println(logString); });
 
   // Wait for serial
   Serial.begin(115200);
@@ -452,29 +450,37 @@ void InitDevices()
   EDIpcProtocol->begin();
 }
 
-/// @brief setup Web serial commands handling
-void SetupWebSerialCommands()
+void PrintFreeRam()
 {
-  WebSerial.onMessage([&](uint8_t *data, size_t len)
+  multi_heap_info_t info;
+  heap_caps_get_info(&info, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT); // internal RAM, memory capable to store data or to create new task
+  TSWebSerial.printf("Total free : %d, minimum free : %d, largest block : %d\n",
+                   info.total_free_bytes,    // total currently free in all non-continues blocks
+                   info.minimum_free_bytes,  // minimum free ever
+                   info.largest_free_block); // largest continues block to allocate big array
+}
+
+/// @brief setup Web serial commands handling
+void SetupTSWebSerialCommands()
+{
+  TSWebSerial.onMessage([&](uint8_t *data, size_t len)
                       {
-                        debug(Serial.printf("Received %u bytes from WebSerial: ", len))
-                        debug(Serial.write(data, len))
-                        debug(Serial.println())
-                        WebSerial.println("Received Data...");
-                        String d = "";
-                        for (size_t i = 0; i < len; i++)
-                        {
-                          d += char(data[i]);
-                        }
-                        WebSerial.println(d);
+                        unsigned long ts = millis();
+                        debug(Serial.printf("Received %u bytes from TSWebSerial: ", len));
+                        debug(Serial.write(data, len));
+                        //debug(Serial.println());
+                        String d(data, len);
+                        TSWebSerial.println(d);
                         if (d.equals("help"))
                         {
-                          WebSerial.println("keymap.[default|save|load]");
-                          WebSerial.println("hardpoints.[default|save|load]");
-                          WebSerial.println("slave.[ping|reset|getupdates|getalldata]");
-                          //      WebSerial.println("display.[location|commander|status]");
-                          WebSerial.println("test.[leds|i2clarge]");
-                          WebSerial.println("reboot");
+                          TSWebSerial.println("keymap.[default|save|load|clearconfig]");
+                          TSWebSerial.println("hardpoints.[default|save|load]");
+                          TSWebSerial.println("macros.[load|explain]");
+                          TSWebSerial.println("slave.[ping|reset|getupdates|getalldata]");
+                          //      TSWebSerial.println("display.[location|commander|status]");
+                          TSWebSerial.println("test.[leds|i2clarge]");
+                          TSWebSerial.println("freeram");
+                          TSWebSerial.println("reboot");
                         }
                         else if (d.equals("keymap.default"))
                         {
@@ -482,11 +488,17 @@ void SetupWebSerialCommands()
                         }
                         else if (d.equals("keymap.save"))
                         {
-                          ActionMapper.SaveMapping();
+                          ActionMapper.SaveMapping(MAPPING_CONFIG_FILE);
                         }
                         else if (d.equals("keymap.load"))
                         {
                           ActionMapper.LoadMapping();
+                        }
+                        else if (d.equals("keymap.clearconfig"))
+                        {
+                          ActionMapper.LoadDefaultMap();
+                          ActionMapper.SaveMapping(MAPPING_CONFIG_FILE);
+                          ActionMapper.SaveMapping(MAPPING_DEFAULT_CONFIG_FILE);        
                         }
                         else if (d.equals("hardpoints.default"))
                         {
@@ -499,6 +511,18 @@ void SetupWebSerialCommands()
                         else if (d.equals("hardpoints.load"))
                         {
                           ActionMapper.LoadHardpoints();
+                        }
+                        else if (d.equals("macros.load"))
+                        {
+                          ActionMapper.LoadMacros();
+                        }
+                        else if (d.equals("macros.explain"))
+                        {
+                          ActionMapper.ExplainMacros();
+                        }
+                        else if (d.equals("freeram"))
+                        {
+                          PrintFreeRam();
                         }
                         else if (d.equals("reboot"))
                         {
@@ -559,7 +583,9 @@ void SetupWebSerialCommands()
                         else if (d.equals("test.display4"))
                         {
                           displayChars(3);
-                        } });
+                        } 
+                        TSWebSerial.printf("%d ms\n", millis() - ts);
+                        });
 }
 
 void setup()
@@ -578,7 +604,7 @@ void setup()
   // configure action mapper
   SetupActionMapper();
   // configure web serial commands
-  SetupWebSerialCommands();
+  SetupTSWebSerialCommands();
 
   // display welcome banner
   Welcome();
@@ -597,10 +623,16 @@ void setup()
   EDIpcProtocol->pingSlave();
 }
 
+unsigned long lasttick = 0;
+
 void loop()
 {
   // handle web server (OTA, web serial...)
-  EDControllerWebServer.loop();
+  if (millis() - lasttick > 50)
+  {
+    EDControllerWebServer.loop();
+    lasttick = millis();
+  }
   // handle rotary controllers
   encoder1->Handle();
   encoder2->Handle();

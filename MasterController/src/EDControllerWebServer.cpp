@@ -2,7 +2,7 @@
 #include <I2CDevice.h>
 #include <WiFi.h>
 #include <ElegantOTA.h>
-#include <WebSerial.h>
+#include <ThreadSafeWebSerial.h>
 #include <Logger.h>
 #include <ActionMapper.h>
 #include <EDGameVariables.h>
@@ -99,6 +99,8 @@ void EDControllerWebServerClass::_onOTAEnd(bool success)
   {
     Logger.Log("OTA update complete");
     _writeWiFiCredentials(wifi_ssid, wifi_password);
+    ActionMapper.SaveHardpoints();
+    ActionMapper.SaveMapping(MAPPING_CONFIG_FILE);
     LittleFS.end();
   }
   else
@@ -106,6 +108,61 @@ void EDControllerWebServerClass::_onOTAEnd(bool success)
     Serial.println("There was an error during OTA update!");
   }
   // <Add your own code here>
+}
+
+void EDControllerWebServerClass::_handleGetMacros(AsyncWebServerRequest *request)
+{
+  if (LittleFS.exists(MACROS_CONFIG_FILE))
+    request->send(LittleFS, MACROS_CONFIG_FILE, "application/json");
+  else
+    request->send(200, "application/json", "{}");
+}
+
+void EDControllerWebServerClass::_handleGetJsonFile(AsyncWebServerRequest *request, const char *filename)
+{
+  if (LittleFS.exists(filename))
+    request->send(LittleFS, filename, "application/json");
+  else
+    request->send(200, "application/json", "{}");
+}
+
+void EDControllerWebServerClass::_saveJsonToFile(AsyncWebServerRequest *request, JsonVariant &json, const char *filename)
+{
+  JsonDocument data;
+  if (json.is<JsonArray>())
+  {
+    data = json.as<JsonArray>();
+  }
+  else if (json.is<JsonObject>())
+  {
+    data = json.as<JsonObject>();
+  }
+
+  File file = LittleFS.open(filename, "w");
+  if (!file)
+  {
+    Logger.Log("Failed to open file for writing");
+    request->send(500, "application/json", "{error:\"Failed to open file for writing\"}");
+    return;
+  }
+
+  if (serializeJson(data, file) == 0)
+  {
+    Logger.Log("Failed to write to file");
+    request->send(500, "application/json", "{error:\"Failed to write to file\"}");
+    file.close();
+    return;
+  }
+
+  file.close();
+  // String response;
+  // serializeJson(data, response);
+  // request->send(200, "application/json", response);
+  // Serial.println(response);
+  Logger.Log("Config saved. Restarting...");
+  request->send(200, "text/plain", "file saved");
+  LittleFS.end();
+  ESP.restart();
 }
 
 void EDControllerWebServerClass::_handleSaveWiFi(AsyncWebServerRequest *request)
@@ -151,7 +208,8 @@ void EDControllerWebServerClass::_handleSaveHardpoints(AsyncWebServerRequest *re
   if (request->hasArg("fire_group_count"))
     EDGameVariables.FireGroupCount = request->arg("fire_group_count").toInt();
 
-  if (request->hasArg("hardpoint_id")) {
+  if (request->hasArg("hardpoint_id"))
+  {
     uint8_t id = request->arg("hardpoint_id").toInt();
     uint8_t fireGroup = request->arg("fire_group").toInt() - 1;
     uint8_t fireWeapon = request->arg("fire_weapon").toInt();
@@ -166,7 +224,8 @@ void EDControllerWebServerClass::_handleSaveHardpoints(AsyncWebServerRequest *re
 
 void EDControllerWebServerClass::_handleDeleteHardpoint(AsyncWebServerRequest *request)
 {
-  if (request->arg("id")) {
+  if (request->arg("id"))
+  {
     uint8_t id = request->arg("id").toInt();
     if (ActionMapper.Hardpoints.find(id) != ActionMapper.Hardpoints.end())
     {
@@ -174,47 +233,48 @@ void EDControllerWebServerClass::_handleDeleteHardpoint(AsyncWebServerRequest *r
       ActionMapper.SaveHardpoints();
       request->send(200, "text/plain", "Configuration saved.");
       return;
-    } 
+    }
   }
   request->send(400, "text/plain", "Invalid request.");
 }
 
-String generateHardpointsTable(const std::map<uint8_t, HardpointItem>& hardpoints) {
-    String html;
+String generateHardpointsTable(const std::map<uint8_t, HardpointItem> &hardpoints)
+{
+  String html;
 
-    for (const auto& entry : hardpoints) {
-        uint8_t id = entry.first;
-        const HardpointItem& item = entry.second;
+  for (const auto &entry : hardpoints)
+  {
+    uint8_t id = entry.first;
+    const HardpointItem &item = entry.second;
 
-        html += "<div class='hardpoint-row'>";
-        html += "<div>";
-         if (id == SCANNER_DSD) 
-          html += "DSD Scanner";
-        else
-          html += String(id);
-        html += "</div>";
-        html += "<div>" + String(item.fireGroup + 1) + "</div>";
-        html += "<div>" + String(item.fireWeapon == 1 ? "Primary" : "Secondary") + "</div>";
-        html += "<div>" + String(item.analysisMode ? "Analysis" : "Combat") + "</div>";
-        html += "<div></div>";
-        html += "</div>";
+    html += "<div class='hardpoint-row'>";
+    html += "<div>";
+    if (id == SCANNER_DSD)
+      html += "DSD Scanner";
+    else
+      html += String(id);
+    html += "</div>";
+    html += "<div>" + String(item.fireGroup + 1) + "</div>";
+    html += "<div>" + String(item.fireWeapon == 1 ? "Primary" : "Secondary") + "</div>";
+    html += "<div>" + String(item.analysisMode ? "Analysis" : "Combat") + "</div>";
+    html += "<div></div>";
+    html += "</div>";
 
-        // html += "<div class='hardpoint-row'>";
-        // html += "<div>";
-        //  if (id == SCANNER_DSD) 
-        //   html += "DSD Scanner";
-        // else
-        //   html += String(id);
-        // html += "</div>";
-        // html += "<div><input type='number' name='fire_group' value='" + String(item.fireGroup) + "' min='0' max='255'></div>";
-        // html += "<div><input type='number' name='fire_weapon' value='" + String(item.fireWeapon) + "' min='0' max='255'></div>";
-        // html += "<div><select name='analysis_mode'><option value='0'" + String(item.analysisMode ? "" : " selected") + ">No</option><option value='1'" + (item.analysisMode ? " selected" : "") + ">Yes</option></select></div>";
-        // html += "<div><button type='submit'>Save</button></div>";
-        // html += "</div>";
+    // html += "<div class='hardpoint-row'>";
+    // html += "<div>";
+    //  if (id == SCANNER_DSD)
+    //   html += "DSD Scanner";
+    // else
+    //   html += String(id);
+    // html += "</div>";
+    // html += "<div><input type='number' name='fire_group' value='" + String(item.fireGroup) + "' min='0' max='255'></div>";
+    // html += "<div><input type='number' name='fire_weapon' value='" + String(item.fireWeapon) + "' min='0' max='255'></div>";
+    // html += "<div><select name='analysis_mode'><option value='0'" + String(item.analysisMode ? "" : " selected") + ">No</option><option value='1'" + (item.analysisMode ? " selected" : "") + ">Yes</option></select></div>";
+    // html += "<div><button type='submit'>Save</button></div>";
+    // html += "</div>";
+  }
 
-    }
-
-    return html;
+  return html;
 }
 
 String EDControllerWebServerClass::_htmlProcessor(const String &var)
@@ -229,9 +289,9 @@ String EDControllerWebServerClass::_htmlProcessor(const String &var)
   return String();
 }
 
-void EDControllerWebServerClass::_handleRoot(AsyncWebServerRequest *request)
+void EDControllerWebServerClass::_handlePage(AsyncWebServerRequest *request, const char *pagePath)
 {
-  request->send(LittleFS, "/html/index.html", String(), false, [this](const String &str)
+  request->send(LittleFS, pagePath, String(), false, [this](const String &str)
                 { return this->_htmlProcessor(str); });
 }
 
@@ -249,7 +309,15 @@ void EDControllerWebServerClass::begin()
     _startAPMode();
   }
   _server->on("/", HTTP_GET, [this](AsyncWebServerRequest *request)
-              { this->_handleRoot(request); });
+              { this->_handlePage(request, "/html/index.html"); });
+  _server->on("/wifi", HTTP_GET, [this](AsyncWebServerRequest *request)
+              { this->_handlePage(request, "/html/wifi.html"); });
+  _server->on("/hardpoints", HTTP_GET, [this](AsyncWebServerRequest *request)
+              { this->_handlePage(request, "/html/hardpoints.html"); });
+  _server->on("/macros", HTTP_GET, [this](AsyncWebServerRequest *request)
+              { this->_handlePage(request, "/html/macros.html"); });
+  _server->on("/mapping", HTTP_GET, [this](AsyncWebServerRequest *request)
+              { this->_handlePage(request, "/html/mapping.html"); });
   _server->on("/savewifi", HTTP_POST, [this](AsyncWebServerRequest *request)
               { this->_handleSaveWiFi(request); });
   _server->on("/clearwifi", HTTP_POST, [this](AsyncWebServerRequest *request)
@@ -258,12 +326,23 @@ void EDControllerWebServerClass::begin()
               { this->_handleSaveHardpoints(request); });
   _server->on("/deletehardpoint", HTTP_POST, [this](AsyncWebServerRequest *request)
               { this->_handleDeleteHardpoint(request); });
+  _server->on("/getmacros", HTTP_GET, [this](AsyncWebServerRequest *request)
+              { this->_handleGetJsonFile(request, MACROS_CONFIG_FILE); });
+  _server->addHandler(new AsyncCallbackJsonWebHandler("/savemacros", [this](AsyncWebServerRequest *request, JsonVariant &json)
+                                                      { this->_saveJsonToFile(request, json, MACROS_CONFIG_FILE); }));
+  _server->on("/getmapping", HTTP_GET, [this](AsyncWebServerRequest *request)
+              { this->_handleGetJsonFile(request, MAPPING_CONFIG_FILE); });
+  _server->on("/getdefaultmapping", HTTP_GET, [this](AsyncWebServerRequest *request)
+              { this->_handleGetJsonFile(request, MAPPING_DEFAULT_CONFIG_FILE); });
+  _server->addHandler(new AsyncCallbackJsonWebHandler("/savemapping", [this](AsyncWebServerRequest *request, JsonVariant &json)
+                                                      { this->_saveJsonToFile(request, json, MAPPING_CONFIG_FILE); }));
+
   _server->serveStatic("/static/", LittleFS, "/html/");
 
   ElegantOTA.onEnd([this](bool success)
                    { this->_onOTAEnd(success); });
 
-  WebSerial.begin(_server);
+  TSWebSerial.begin(_server);
   ElegantOTA.begin(_server); // Start ElegantOTA
   _server->begin();
 }
@@ -278,8 +357,7 @@ void EDControllerWebServerClass::showIp()
 
 void EDControllerWebServerClass::loop()
 {
-
-  WebSerial.loop();
+  TSWebSerial.loop();
   ElegantOTA.loop();
 }
 

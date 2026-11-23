@@ -1,0 +1,439 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    text-align: center;
+}
+
+.equipment-container {
+    position: relative;
+    display: inline-block;
+    border: 2px solid #333;
+    box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);
+}
+
+.equipment-container img {
+    display: block;
+    max-width: 100%;
+    max-height: 60vh;            
+    height: auto;
+}
+
+.key {
+    position: absolute;
+    width: 7%;
+    height: 7%;
+    line-height: 40px;
+    text-align: center;
+    border: 1px solid rgba(51, 51, 51, 0);
+    background-color: rgba(255, 255, 255, 0);
+    cursor: pointer;
+    border-radius: 5px;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    mix-blend-mode: overlay;
+}
+
+.circlekey {
+    position: absolute;
+    width: 6%;
+    height: 7.5%;
+    border-radius: 100%;
+    border: 1px solid rgba(56, 255, 0, 0);
+    background-color: rgba(255, 255, 255, 0);
+    box-sizing: border-box;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    mix-blend-mode: overlay;
+}
+
+.switch {
+    position: absolute;
+    width: 6%;
+    height: 7.5%;
+    border-radius: 100%;
+    border: 1px solid rgba(255, 255, 255, 0);
+    background-color: rgba(255, 255, 255, 0);
+    box-sizing: border-box;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    mix-blend-mode: overlay;
+}
+
+.switch.selected {
+    border: 1px solid rgba(255, 255, 255, 1);
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.8),
+        0 0 12px rgba(255, 255, 255, 0.9), 0 0 16px rgba(255, 255, 255, 1);
+    mix-blend-mode: overlay;
+}
+
+.knob {
+    position: absolute;
+    width: 6.5%;
+    height: 7.5%;
+    border-radius: 100%;
+    border: 1px solid rgba(255, 255, 255, 0);
+    background-color: rgba(255, 255, 255, 0);
+    box-sizing: border-box;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    mix-blend-mode: overlay;
+}
+
+.knob.selected {
+    border: 1px solid rgba(255, 255, 255, 1);
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.8),
+        0 0 12px rgba(255, 255, 255, 0.9), 0 0 16px rgba(255, 255, 255, 1);
+    mix-blend-mode: overlay;
+}
+
+.circlekey.selected {
+    border: 5px solid rgba(56, 255, 0, 1);
+    box-shadow: -2px -2px 3px 10px rgba(76, 175, 80, 0.8),
+        -2px -2px 3px 12px rgba(76, 175, 80, 0.9),
+        -2px -2px 5px 16px rgba(76, 175, 80, 1),
+        inset -5px -5px 10px 30px rgba(255, 255, 255, 1);
+
+    mix-blend-mode: overlay;
+}
+
+.key-red.selected {
+    background-color: rgba(255, 77, 77, 1);
+    box-shadow: 0 0 30px rgba(255, 77, 77, 0.8),
+        0 0 60px rgba(255, 77, 77, 0.9), 0 0 100px rgba(255, 77, 77, 1),
+        inset 0 0 30px rgba(255, 255, 255, 1);
+    mix-blend-mode: overlay;
+}
+
+.key-green.selected {
+    background-color: rgba(76, 175, 80, 1);
+    box-shadow: 0 0 30px rgba(76, 175, 80, 0.8),
+        0 0 60px rgba(76, 175, 80, 0.9), 0 0 100px rgba(76, 175, 80, 1),
+        inset 0 0 30px rgba(255, 255, 255, 1);
+    mix-blend-mode: overlay;
+}
+
+.key-orange.selected {
+    background-color: rgba(255, 152, 0, 1);
+    box-shadow: 0 0 30px rgba(255, 152, 0, 0.8),
+        0 0 60px rgba(255, 152, 0, 0.9), 0 0 100px rgba(255, 152, 0, 1),
+        inset 0 0 30px rgba(255, 255, 255, 1);
+    mix-blend-mode: overlay;
+}
+
+.key-blue.selected {
+    background-color: rgba(33, 150, 243, 1);
+    box-shadow: 0 0 30px rgba(33, 150, 243, 0.8),
+        0 0 60px rgba(33, 150, 243, 0.9), 0 0 100px rgba(33, 150, 243, 1),
+        inset 0 0 30px rgba(255, 255, 255, 1);
+    mix-blend-mode: overlay;
+}
+
+.key-white.selected {
+    background-color: rgba(255, 255, 255, 1);
+    box-shadow: 0 0 30px rgba(255, 255, 255, 0.8),
+        0 0 60px rgba(255, 255, 255, 0.9), 0 0 100px rgba(255, 255, 255, 1),
+        inset 0 0 30px rgba(255, 255, 255, 1);
+    mix-blend-mode: overlay;
+}
+
+/* we could use numeric ids, (data-key), but it would be far less maintainable. */
+
+.key[data-name='SRV_1'] {
+    top: 7.5%;
+    left: 6%;
+}
+
+.key[data-name='SRV_2'] {
+    top: 7.5%;
+    left: 14.5%;
+}
+
+.key[data-name='SRV_3'] {
+    top: 16%;
+    left: 6%;
+}
+
+.key[data-name='SRV_4'] {
+    top: 16%;
+    left: 14.5%;
+}
+
+.key[data-name='SHIP_SILENT_RUNNING'] {
+    top: 10.5%;
+    left: 24%;
+}
+
+.key[data-name='SHIP_JETTISON_CARGO'] {
+    top: 10.5%;
+    left: 32%;
+}
+
+.key[data-name='SHIP_EMERGENCY_STOP'] {
+    top: 10.5%;
+    left: 39.7%;
+}
+
+.key[data-name='SHIP_CARGO_SCOOP'] {
+    top: 10.8%;
+    left: 49.7%;
+}
+
+.key[data-name='SHIP_LIGHTS'] {
+    top: 10.7%;
+    left: 55.8%;
+}
+
+.key[data-name='SHIP_HARDPOINTS'] {
+    top: 10.5%;
+    left: 62%;
+}
+
+.key[data-name='SHIP_LANDING_GEARS'] {
+    top: 10.5%;
+    left: 68.3%;
+}
+
+.key[data-name='SHIP_FLIGHT_ASSIST'] {
+    top: 10.5%;
+    left: 79.5%;
+}
+
+.key[data-name='FIGHTER_DEFEND'] {
+    top: 30.5%;
+    left: 6.1%;
+}
+
+.key[data-name='FIGHTER_ATTACK'] {
+    top: 30.5%;
+    left: 15%;
+}
+
+.key[data-name='FIGHTER_HOLDPOS'] {
+    top: 38.5%;
+    left: 6.1%;
+}
+
+.key[data-name='FIGHTER_HOLDFIRE'] {
+    top: 38.5%;
+    left: 15%;
+}
+
+.key[data-name='FIGHTER_FOLLOW'] {
+    top: 46.5%;
+    left: 6.1%;
+}
+
+.key[data-name='FIGHTER_DOCK'] {
+    top: 46.5%;
+    left: 15.1%;
+}
+
+.key[data-name='FIGHTER_FIREATWILL'] {
+    top: 54.5%;
+    left: 10.8%;
+}
+
+.key[data-name='STARNAV_GALAXY_MAP'] {
+    top: 48.9%;
+    left: 24.3%;
+}
+
+.key[data-name='STARNAV_SYSTEM_MAP'] {
+    top: 48.9%;
+    left: 32.9%;
+}
+
+.key[data-name='STARNAV_NEXT_SYSTEM'] {
+    top: 48.7%;
+    left: 48.9%;
+    height: 6.5%;
+}
+
+.key[data-name='COCKPIT_MODE'] {
+    top: 28%;
+    left: 59.5%;
+}
+
+.key[data-name='SCANNER_PREVIOUS_FILTER'] {
+    top: 28%;
+    left: 79%;
+}
+
+.key[data-name='SCANNER_NEXT_FILTER'] {
+    top: 28%;
+    left: 87.5%;
+}
+
+.key[data-name='SCANNER_DSD'] {
+    top: 28.2%;
+    left: 70.1%;
+}
+
+.key[data-name='SCANNER_ACS'] {
+    top: 40.5%;
+    left: 70.1%;
+}
+
+.key[data-name='SCANNER_ZOOM'] {
+    top: 40.5%;
+    left: 80.5%;
+}
+
+.key[data-name='SCANNER_FREQ'] {
+    top: 40.5%;
+    left: 88.6%;
+    width: 7.5%;
+}
+
+.key[data-name='TARGETING_MOST_HOSTILE'] {
+    top: 55.5%;
+    left: 63.3%;
+}
+
+.key[data-name='TARGETING_MAIN_THREAT'] {
+    top: 55.5%;
+    left: 71.5%;
+}
+
+.key[data-name='TARGETING_PREVIOUS_THREAT'] {
+    top: 55.5%;
+    left: 79.5%;
+}
+
+.key[data-name='TARGETING_NEXT_THREAT'] {
+    top: 55.5%;
+    left: 87.7%;
+}
+
+.key[data-name='TARGETING_SENSORS'] {
+    top: 68.2%;
+    left: 63.3%;
+}
+
+.key[data-name='TARGETING_NEXT_TARGET'] {
+    top: 68%;
+    left: 71%;
+}
+
+.key[data-name='TARGETING_NEXT_SUBSYS'] {
+    top: 68%;
+    left: 79.3%;
+}
+
+.key[data-name='TARGETING_NEXT_GROUP'] {
+    top: 68%;
+    left: 87.7%;
+}
+
+.key[data-name='WING_1'] {
+    top: 68.9%;
+    left: 6.1%;
+}
+
+.key[data-name='WING_TARGET'] {
+    top: 68.9%;
+    left: 15%;
+}
+
+.key[data-name='WING_2'] {
+    top: 76.7%;
+    left: 6.1%;
+}
+
+.key[data-name='WING_3'] {
+    top: 84.6%;
+    left: 6.1%;
+}
+
+.key[data-name='WING_NAVLOCK'] {
+    top: 84.6%;
+    left: 15%;
+}
+
+.key[data-name='DEFENSE_SHIELD_CELL'] {
+    top: 68.5%;
+    left: 24.3%;
+}
+
+.key[data-name='DEFENSE_HEAT_SINK'] {
+    top: 68.5%;
+    left: 32.9%;
+}
+
+.key[data-name='DEFENSE_CHAFF'] {
+    top: 68.5%;
+    left: 40.8%;
+}
+
+.key[data-name='DEFENSE_ECM'] {
+    top: 68.5%;
+    left: 48.8%;
+}
+
+.key[data-name='ENERGY_SYSTEMS'] {
+    top: 84.6%;
+    left: 24.3%;
+}
+
+.key[data-name='ENERGY_ENGINE'] {
+    top: 84.6%;
+    left: 32.9%;
+}
+
+.key[data-name='ENERGY_WEAPONS'] {
+    top: 84.6%;
+    left: 40.8%;
+}
+
+.key[data-name='ENERGY_BALANCE'] {
+    top: 84.6%;
+    left: 48.8%;
+}
+
+.key[data-name='ENGINE_CRUISE'] {
+    top: 83.1%;
+    left: 59.7%;
+}
+
+.key[data-name='ENGINE_JUMP'] {
+    top: 82.79%;
+    left: 69.5%;
+}
+
+.key[data-name='ENGINE_DISENGAGE'] {
+    top: 84.3%;
+    left: 78.2%;
+}
+
+.key[data-name='ENGINE_FULL_STOP'] {
+    top: 84.6%;
+    left: 87.8%;
+}
+
+.config-panel,
+.config-panel div {
+    margin-top: 20px;
+}
+
+.config-item {
+    align-items: baseline;
+    gap: 10px;
+}
+
+#coordinates {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 5px;
+    border-radius: 3px;
+}

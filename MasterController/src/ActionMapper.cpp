@@ -1,9 +1,9 @@
 #include <ActionMapper.h>
 #include <LittleFS.h>
-#include <ArduinoJson.h>
 #include <Logger.h>
 #include <EDGameVariables.h>
-#include <WebSerial.h>
+#include <ThreadSafeWebSerial.h>
+// #include <WebSerial.h>
 
 #define SYNC_TOLERANCE 5000
 
@@ -15,23 +15,25 @@ ActionMapperClass::ActionMapperClass()
 void ActionMapperClass::Init()
 {
     LoadDefaultMap();
-    // if (!LoadMapping())
-    // {
-    //     LoadDefaultMap();
-    //     SaveMapping();
-    // }
-
+    File file = LittleFS.open(MAPPING_DEFAULT_CONFIG_FILE, "r");
+    if (!file) {
+        SaveMapping(MAPPING_DEFAULT_CONFIG_FILE);
+    }
+    LoadMapping();
+    
     if (!LoadHardpoints())
     {
         LoadDefaultHardpointConfig();
         SaveHardpoints();
     }
+
+    LoadMacros();
 }
 
 /// @brief Unused at the moment
 /// @return 
 bool ActionMapperClass::LoadMapping() {
-    File file = LittleFS.open("/actionsMap.json", "r");
+    File file = LittleFS.open(MAPPING_CONFIG_FILE, "r");
     if (!file) {        
         Logger.Log("Failed to open file for reading");
         return false;
@@ -39,7 +41,7 @@ bool ActionMapperClass::LoadMapping() {
 
     JsonDocument doc;
 
-    DeserializationError error = deserializeJson(doc, file);
+    DeserializationError error = deserializeJson(doc, file);    
     if (error) {
         Logger.Log("Failed to read file, using default configuration");
         file.close();
@@ -50,7 +52,7 @@ bool ActionMapperClass::LoadMapping() {
     
     _actionsMap.clear();
 
-    for (JsonPair kv : doc.as<JsonObject>()) {
+    for (JsonPair kv : doc["mapping"].as<JsonObject>()) {
         uint8_t key = String(kv.key().c_str()).toInt();
         JsonObject item = kv.value().as<JsonObject>();
         ActionMapperItem value;
@@ -60,6 +62,7 @@ bool ActionMapperClass::LoadMapping() {
         value.pressCount = item["c"].as<uint8_t>();
         value.state = static_cast<ActionnerState>(item["s"].as<uint8_t>());
         _actionsMap[key] = value;
+        Serial.printf("mapping : load key %d (%d, %d, %d, %d, %d)\n", key, (uint8_t)value.type, value.pressedKey, value.releasedKey, value.pressCount, (uint8_t)value.state);
     }
 
     file.close();
@@ -69,18 +72,19 @@ bool ActionMapperClass::LoadMapping() {
 
 /// @brief Unused at the moment
 /// @return 
-void ActionMapperClass::SaveMapping() {
-    File file = LittleFS.open("/actionsMap.json", "w");
+void ActionMapperClass::SaveMapping(const char *path) {
+    File file = LittleFS.open(path, "w");
     if (!file) {
         Logger.Log("Failed to open file for writing");
         return;
     }
 
     JsonDocument doc;
-
+    JsonObject mapping = doc["mapping"].to<JsonObject>();
+    
     for (const auto& kv : _actionsMap) {
 
-        JsonObject item = doc[kv.first].to<JsonObject>();
+        JsonObject item = mapping[String(kv.first)].to<JsonObject>();
         item["t"] = kv.second.type;
         item["p"] = kv.second.pressedKey;
         item["r"] = kv.second.releasedKey;
@@ -106,19 +110,19 @@ void ActionMapperClass::LoadDefaultMap()
     _actionsMap[SRV_3] = {ActionnerType::Button, 'r', 0x00, 1}; // X Recall/dismiss ship
     _actionsMap[SRV_4] = {ActionnerType::Button, 'z', 0x00, 1}; // Z Drive Assist
 
-    _actionsMap[FIGHTER_ATTACK] = {ActionnerType::Button, 0xE3, 0x00, 1}; // NP3
     _actionsMap[FIGHTER_DEFEND] = {ActionnerType::Button, 0xE1, 0x00, 1}; // NP1
-    _actionsMap[FIGHTER_HOLDFIRE] = {ActionnerType::Button, 0xE4, 0x00, 1}; // NP4
+    _actionsMap[FIGHTER_ATTACK] = {ActionnerType::Button, 0xE3, 0x00, 1}; // NP3
     _actionsMap[FIGHTER_HOLDPOS] = {ActionnerType::Button, 0xE5, 0x00, 1}; // NP5
-    _actionsMap[FIGHTER_DOCK] = {ActionnerType::Button, 0xEA, 0x00, 1}; // NP0
+    _actionsMap[FIGHTER_HOLDFIRE] = {ActionnerType::Button, 0xE4, 0x00, 1}; // NP4
     _actionsMap[FIGHTER_FOLLOW] = {ActionnerType::Button, 0xE6, 0x00, 1}; // NP6
+    _actionsMap[FIGHTER_DOCK] = {ActionnerType::Button, 0xEA, 0x00, 1}; // NP0
     _actionsMap[FIGHTER_FIREATWILL] = {ActionnerType::Button, 0xE2, 0x00, 1}; // NP2
 
-    _actionsMap[WING_TARGET] = {ActionnerType::Button, '0', 0x27, 1}; // 0 / à
-    _actionsMap[WING_1] = {ActionnerType::Button, '7', 0x24, 1}; // 7 / è
-    _actionsMap[WING_2] = {ActionnerType::Button, '8', 0x25, 1}; // 8 / _
+    _actionsMap[WING_1] = {ActionnerType::Button, '7', 0x00, 1}; // 7 / è
+    _actionsMap[WING_TARGET] = {ActionnerType::Button, '0', 0x00, 1}; // 0 / à
+    _actionsMap[WING_2] = {ActionnerType::Button, '8', 0x00, 1}; // 8 / _
+    _actionsMap[WING_3] = {ActionnerType::Button, '9', 0x00, 1}; // 9
     _actionsMap[WING_NAVLOCK] = {ActionnerType::Button, 0x2d, 0x00, 1}; // )
-    _actionsMap[WING_3] = {ActionnerType::Button, '9', 0x26, 1}; // 9
 
     _actionsMap[STARNAV_GALAXY_MAP] = {ActionnerType::Button, 0xCB, 0x00, 1}; // F10
     _actionsMap[STARNAV_SYSTEM_MAP] = {ActionnerType::Button, 0xCC, 0x00, 1}; // F11
@@ -168,11 +172,11 @@ void ActionMapperClass::LoadDefaultMap()
     _actionsMap[SCANNER_ZOOM_CLICK] = {ActionnerType::Button, 0xDD, 0x00, 1}; // KP * - Discover analysis
     _actionsMap[SCANNER_FREQ_LEFT] = {ActionnerType::Discrete, 'a', 0x00, 1}; // [
     _actionsMap[SCANNER_FREQ_RIGHT] = {ActionnerType::Discrete, 'd', 0x00, 1}; // ]
-    _actionsMap[SCANNER_FREQ_TARGET] = {ActionnerType::Button, 't', 0x00, 1}; // T
+    _actionsMap[SCANNER_FREQ_CLICK] = {ActionnerType::Button, 't', 0x00, 1}; // T
 
     _actionsMap[TARGETING_SENSORS_LEFT] = {ActionnerType::Discrete, 0xD6, 0x00, 1}; // PG DOWN
     _actionsMap[TARGETING_SENSORS_RIGHT] = {ActionnerType::Discrete, 0xD3, 0x00, 1}; // PG UP
-    // #define TARGETING_SENSORS_CLICK 82
+    _actionsMap[TARGETING_SENSORS_CLICK] = {ActionnerType::Button, 0x00, 0x00, 1}; // 
 
     RebuildToggleList();
 }
@@ -188,7 +192,7 @@ bool ActionMapperClass::LoadHardpoints() {
 
     DeserializationError error = deserializeJson(doc, file);
     if (error) {
-        Logger.Log("Failed to read file, using default configuration");
+        Logger.Log("Failed to read hardpoints file, using default configuration");
         file.close();
         return false;
     }
@@ -206,16 +210,91 @@ bool ActionMapperClass::LoadHardpoints() {
         value.analysisMode = item["analysis"].as<uint8_t>() == 1 ? true : false;
         Hardpoints[key] = value;
     }
-    serializeJson(doc, WebSerial);
+    String res;    
+    serializeJson(doc, res);
+    TSWebSerial.print(res);
 
     file.close();
     return true;
 }
 
+void ActionMapperClass::ExplainMacros() {
+    String desc = "";
+    for (const auto& keyMacros : Macros) {
+        desc = "Macros for key ";
+        desc.concat(keyMacros.first);
+        desc.concat(":\n");
+        int i = 1;
+        std::vector<Macro*>* macroVector = keyMacros.second;
+        for (Macro* macro: *macroVector) {
+            desc.concat("Macro #");
+            desc.concat(i++);
+            desc.concat("\n");
+            macro->Explain(&desc);
+            desc.concat("\n");
+        }
+    }
+    TSWebSerial.print(desc);
+}
+
+bool ActionMapperClass::LoadMacros() {
+    File file = LittleFS.open(MACROS_CONFIG_FILE, "r");
+    if (!file) {        
+        Logger.Log("Failed to open file for reading");
+        return false;
+    }
+
+    JsonDocument doc;
+
+    DeserializationError error = deserializeJson(doc, file);
+    if (error) {
+        Logger.Log("Failed to read macros file");
+        file.close();
+        return false;
+    }
+
+    for (const auto& keyMacros : Macros) {
+        std::vector<Macro*>* macroVector = keyMacros.second;
+        for (Macro* macro: *macroVector) {
+            delete macro;
+        }
+        delete macroVector;
+    }
+    Macros.clear();
+
+    JsonArray macroData = doc.as<JsonArray>();
+    for (JsonObject item : macroData) {        
+        if (item["key"].is<uint8_t>() && item["opcodes"].is<JsonArray>()) {
+            uint8_t key = item["key"].as<uint8_t>();
+            Serial.printf("Macro key = %d\n", key);
+            std::vector<Macro*>* keyMacros;
+            if (Macros.find(key) != Macros.end())
+            {
+                Serial.printf("Macro key exists\n");
+                keyMacros = Macros[key];
+            } else {
+                Serial.printf("Macro key not found, adding\n");
+                keyMacros = new std::vector<Macro*>();
+                Macros[key] = keyMacros;
+            }
+            Serial.printf("Instanciate macro from opcodes\n");
+            Macro* m = new Macro(item["opcodes"].as<JsonArray>());
+            Serial.printf("Macro instanciated, adding\n");
+            keyMacros->push_back(m);
+        } else {
+            TSWebSerial.println("Invalid macro definition, check datatypes");
+        }
+    }
+
+    file.close();
+    Logger.Log("Macros config loaded");    
+    return true;    
+}
+
 void ActionMapperClass::SaveHardpoints() {
     File file = LittleFS.open("/hardpoints.json", "w");
     if (!file) {
-        Logger.Log("Failed to open file for writing");
+        TSWebSerial.println("Failed to open file for writing");
         return;
     }
 
@@ -228,9 +307,11 @@ void ActionMapperClass::SaveHardpoints() {
         item["weapon"] = kv.second.fireWeapon;
         item["analysis"] = kv.second.analysisMode ? 1 : 0;
     }
-    serializeJson(doc, WebSerial);
+    String res;
+    serializeJson(doc, res);
+    TSWebSerial.print(res);
     if (serializeJson(doc, file) == 0) {
-        Logger.Log("Failed to write to file");
+        TSWebSerial.println("Failed to write to file");
     }
     
     file.close();
@@ -335,23 +416,26 @@ void ActionMapperClass::UpdateRemoteStatus()
 
 void ActionMapperClass::UpdateLocalStatus(uint8_t item, bool physicalStatus)
 {
-    _toggles[item]->localState = physicalStatus ? ActionnerState::Active : ActionnerState::Inactive;
+    if (_toggles.find(item) != _toggles.end())
+        _toggles[item]->localState = physicalStatus ? ActionnerState::Active : ActionnerState::Inactive;
+    else
+        Serial.printf("Try to update non existing item %d in toggles\n", item);
 }
 
 void ActionMapperClass::TriggerHardpoint(uint8_t item)
 {
     if (Hardpoints.find(item) != Hardpoints.end()) {
-        WebSerial.printf("Hardpoint %d found\n");
+        TSWebSerial.printf("Hardpoint %d found\n");
         HardpointItem hardpoint = Hardpoints[item];
         // switch cockpit mode if necessary
         if (hardpoint.analysisMode != EDGameVariables.IsHudAnalysisMode())
         {
-            WebSerial.println("HUD mode mismatch, switching");
+            TSWebSerial.println("HUD mode mismatch, switching");
             ActionMapper.SendKey(ActionMapper.GetItemConfig(COCKPIT_MODE).pressedKey, true, 1);
         } 
         else 
         {
-            WebSerial.println("HUD mode looks good");
+            TSWebSerial.println("HUD mode looks good");
         }
         // Switch to the proper firegroup
         uint8_t n = 0;
@@ -362,14 +446,14 @@ void ActionMapperClass::TriggerHardpoint(uint8_t item)
                 n = (EDGameVariables.FireGroupCount - EDGameVariables.FireGroup) + hardpoint.fireGroup;
             if (n > 0)
             {
-                WebSerial.printf("firegroup mismatch, current=%d, target=%d, total=%d, sending %d switches\n", EDGameVariables.FireGroup, hardpoint.fireGroup, EDGameVariables.FireGroupCount, n);
+                TSWebSerial.printf("firegroup mismatch, current=%d, target=%d, total=%d, sending %d switches\n", EDGameVariables.FireGroup, hardpoint.fireGroup, EDGameVariables.FireGroupCount, n);
                 ActionMapper.SendKey(ActionMapper.GetItemConfig(TARGETING_NEXT_GROUP).pressedKey, true, n);
                 delay(200);
             }
         }
 
         // Trigger hardpoint weapon
-        WebSerial.printf("Firing %s weapon\n", hardpoint.fireWeapon == 1 ? "Primary" : "Secondary");
+        TSWebSerial.printf("Firing %s weapon\n", hardpoint.fireWeapon == 1 ? "Primary" : "Secondary");
         ActionMapper.SendKey(hardpoint.fireWeapon == 1 ? FIRE_WEAPON1 : FIRE_WEAPON2, true, 1);
     }
 }

@@ -1,5 +1,5 @@
 #include "EDDisplayManager.h"
-#include <WebSerial.h>
+#include <ThreadSafeWebSerial.h>
 #include "CrcParameters.h"
 #include "CRC8.h"
 
@@ -170,7 +170,7 @@ void EDDisplayManager::UpdatePages()
 
     if (currentCrcResult != pageCrcResult)
     {
-//        WebSerial.printf("display page content changed, force invalidate %d != %d\n", currentCrcResult, pageCrcResult);
+//        TSWebSerial.printf("display page content changed, force invalidate %d != %d\n", currentCrcResult, pageCrcResult);
         Invalidate();
     }
 
@@ -224,7 +224,7 @@ void EDDisplayManager::Handle()
     } 
     
     if (page != _current) {
-//        WebSerial.printf("%lu Displaypage\n", now);
+//        TSWebSerial.printf("%lu Displaypage\n", now);
         Display(page);
         // reset timers
         lastBlink = now;

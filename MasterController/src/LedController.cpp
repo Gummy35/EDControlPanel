@@ -26,7 +26,7 @@ void LedControllerClass::SetGroup(const uint8_t *Ledgroup, int size, uint8_t val
 {
   for (int i = 0; i < size; i++)
   {
-    // WebSerial.printf("Led %d : %d", i, Ledgroup[i]);
+    // TSWebSerial.printf("Led %d : %d", i, Ledgroup[i]);
     _tpic->setNoUpdate(Ledgroup[i], value);
   }
   if (updateRegisters)
